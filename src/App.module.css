@@ -1,0 +1,38 @@
+.viewport {
+  width: 100%;
+  height: 100%;
+}
+
+.loadingState {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  gap: 18px;
+  color: rgba(34, 62, 87, 0.92);
+  font-size: 15px;
+  background: transparent;
+}
+
+.loadingOrb {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.92), rgba(110, 227, 246, 0.8));
+  box-shadow:
+    0 20px 40px rgba(61, 113, 166, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.78);
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}

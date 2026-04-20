@@ -1,0 +1,329 @@
+.viewport {
+  --overlay-scale: 1;
+  --window-shell-opacity: 0.96;
+  width: 100%;
+  height: 100%;
+}
+
+.scaleFrame {
+  transform: scale(var(--overlay-scale, 1));
+  transform-origin: center center;
+}
+
+.scaleFrameFull {
+  display: grid;
+  place-items: center;
+  width: calc(100% / var(--overlay-scale, 1));
+  height: calc(100% / var(--overlay-scale, 1));
+  transform: scale(var(--overlay-scale, 1));
+  transform-origin: center center;
+}
+
+.reminderViewport,
+.breakViewport,
+.immersiveViewport {
+  display: grid;
+  place-items: center;
+  padding: 10px;
+}
+
+.reminderViewport {
+  background: transparent;
+}
+
+.immersiveViewport {
+  background: transparent;
+}
+
+.reminderCardLevel1,
+.reminderCardLevel2,
+.immersiveCard,
+.breakShell,
+.closePromptCard {
+  position: relative;
+  border: 1px solid rgb(255 255 255 / calc(var(--window-shell-opacity) * 0.8));
+  border-radius: 28px;
+  background: linear-gradient(
+    135deg,
+    rgb(255 255 255 / var(--window-shell-opacity)),
+    rgb(246 249 252 / calc(var(--window-shell-opacity) * 0.97))
+  );
+  box-shadow:
+    0 14px 28px rgba(69, 110, 146, 0.1),
+    inset 0 1px 0 rgb(255 255 255 / calc(var(--window-shell-opacity) * 0.92));
+  color: #243852;
+}
+
+.reminderCardLevel1 {
+  display: flex;
+  align-items: stretch;
+  width: min(100%, 380px);
+  overflow: hidden;
+}
+
+.reminderAccent {
+  width: 8px;
+  background: linear-gradient(180deg, rgba(82, 224, 246, 0.94), rgba(46, 185, 228, 0.92));
+}
+
+.reminderContent {
+  flex: 1;
+  padding: 26px;
+}
+
+.reminderContent h2,
+.reminderCardLevel2 h2,
+.immersiveCard h2,
+.breakShell h2 {
+  margin: 0 0 10px;
+  font-size: 24px;
+}
+
+.reminderContent p,
+.reminderCardLevel2 p,
+.immersiveCard p,
+.breakHint,
+.closePromptCard p {
+  margin: 0;
+  color: rgba(67, 97, 124, 0.88);
+  line-height: 1.65;
+}
+
+.reminderActionsCompact,
+.reminderActionRow,
+.closePromptActions {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.primaryButton,
+.secondaryButton {
+  min-height: 52px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 20px;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.primaryButton {
+  background: linear-gradient(135deg, #73e6f7, #39b5dc);
+  color: #183149;
+  box-shadow:
+    0 16px 28px rgba(71, 172, 215, 0.26),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.secondaryButton {
+  background: rgba(255, 255, 255, 0.98);
+  color: #35506c;
+  box-shadow:
+    0 10px 20px rgba(84, 106, 134, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.86);
+}
+
+.floatingDot {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: #26c7ea;
+}
+
+.reminderCardLevel2,
+.immersiveCard,
+.breakShell {
+  display: grid;
+  place-items: center;
+  gap: 16px;
+  text-align: center;
+  padding: 34px;
+}
+
+.reminderCardLevel2 {
+  width: min(100%, 480px);
+}
+
+.immersiveShell {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  padding: 28px;
+}
+
+.immersiveCard {
+  width: min(100%, 720px);
+  min-height: 460px;
+}
+
+.immersiveHint {
+  padding: 18px 22px;
+  border-radius: 22px;
+  background: linear-gradient(135deg, rgba(198, 247, 253, 0.92), rgba(137, 237, 248, 0.72));
+  color: #2d516f;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.reminderIconCircle {
+  display: grid;
+  place-items: center;
+  width: 80px;
+  height: 80px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(198, 247, 253, 0.92), rgba(137, 237, 248, 0.72));
+  color: #27435d;
+}
+
+.reminderIconCircle svg {
+  width: 34px;
+  height: 34px;
+  fill: currentColor;
+}
+
+.reminderSubtitle {
+  color: rgba(67, 97, 124, 0.8);
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.breakViewport {
+  background: transparent;
+  padding: 10px;
+}
+
+.breakShell {
+  width: min(100%, 340px);
+  max-height: calc(100vh - 20px);
+  height: auto;
+  padding: 20px 18px 18px;
+  gap: 10px;
+  overflow-y: auto;
+}
+
+.breakShellGuided {
+  width: 100%;
+}
+
+.breakEyebrow {
+  margin: 0;
+  color: rgba(67, 97, 124, 0.8);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.breakShell h2 {
+  max-width: 280px;
+  margin-bottom: 4px;
+  font-size: clamp(20px, 5vw, 24px);
+  line-height: 1.2;
+}
+
+.countdownFace {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 156px;
+  height: 156px;
+}
+
+.countdownAura {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background:
+    conic-gradient(
+      from -90deg,
+      rgba(76, 222, 245, 0.96) calc(var(--progress) * 360deg),
+      rgba(226, 237, 246, 0.96) 0deg
+    );
+  -webkit-mask: radial-gradient(circle, transparent 58%, black 59%);
+  mask: radial-gradient(circle, transparent 58%, black 59%);
+}
+
+.countdownAuraBreathing {
+  animation: pulse 2.6s ease-in-out infinite;
+}
+
+.countdownAuraGuided {
+  background:
+    radial-gradient(circle at center, rgba(198, 247, 253, 0.72), transparent 62%),
+    conic-gradient(
+      from -90deg,
+      rgba(76, 222, 245, 0.96) calc(var(--progress) * 360deg),
+      rgba(226, 237, 246, 0.96) 0deg
+    );
+}
+
+.breakValue {
+  position: relative;
+  font-size: 60px;
+  line-height: 1;
+  letter-spacing: -0.06em;
+}
+
+.breakHint {
+  max-width: 280px;
+  font-size: 16px;
+}
+
+.breakShell .secondaryButton {
+  min-width: 160px;
+}
+
+.closePromptLayer {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: transparent;
+}
+
+.closePromptCard {
+  width: min(100%, 460px);
+  padding: 28px;
+}
+
+.closePromptCard h3 {
+  margin: 0 0 10px;
+  font-size: 24px;
+}
+
+.closePromptHint {
+  display: inline-block;
+  margin-top: 14px;
+  color: rgba(67, 97, 124, 0.82);
+  font-size: 14px;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.88;
+  }
+  50% {
+    transform: scale(1.06);
+    opacity: 1;
+  }
+}
+
+@media (max-width: 405px) {
+  .reminderActionRow,
+  .reminderActionsCompact,
+  .closePromptActions {
+    flex-direction: column;
+  }
+
+  .immersiveCard {
+    min-height: auto;
+  }
+}

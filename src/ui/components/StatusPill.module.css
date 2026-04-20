@@ -1,0 +1,43 @@
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 700;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.running {
+  background: rgba(238, 252, 251, 0.96);
+  color: #2f9989;
+}
+
+.paused {
+  background: rgba(255, 246, 232, 0.96);
+  color: #be7d2e;
+}
+
+.snoozed {
+  background: rgba(238, 244, 255, 0.96);
+  color: #4c73b9;
+}
+
+.break_in_progress {
+  background: rgba(235, 248, 255, 0.96);
+  color: #347596;
+}
+
+.outside_schedule {
+  background: rgba(241, 244, 247, 0.96);
+  color: #5a6978;
+}

@@ -1,0 +1,35 @@
+.card {
+  display: grid;
+  gap: 6px;
+  min-height: 112px;
+  padding: 16px;
+  border-radius: 22px;
+  border: 1px solid rgba(21, 50, 58, 0.08);
+}
+
+.card span {
+  font-size: 12px;
+  color: #5f7276;
+}
+
+.card strong {
+  font-size: 28px;
+  line-height: 1.05;
+  color: #15323a;
+}
+
+.ink {
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.84), rgba(239, 247, 245, 0.96));
+}
+
+.calm {
+  background: linear-gradient(160deg, rgba(232, 248, 244, 0.92), rgba(252, 255, 254, 0.96));
+}
+
+.bright {
+  background: linear-gradient(160deg, rgba(255, 246, 222, 0.96), rgba(255, 252, 246, 0.98));
+}
+
+.muted {
+  background: linear-gradient(160deg, rgba(244, 242, 236, 0.96), rgba(255, 255, 255, 0.9));
+}
