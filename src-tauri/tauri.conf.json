@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "GazeRest",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "identifier": "com.gazerest.desktop",
   "build": {
     "frontendDist": "../dist",
@@ -15,10 +15,10 @@
         "title": "GazeRest",
         "label": "main",
         "center": true,
-        "width": 780,
-        "height": 470,
+        "width": 670,
+        "height": 400,
         "minWidth": 620,
-        "minHeight": 430,
+        "minHeight": 380,
         "resizable": false,
         "decorations": false,
         "transparent": true,
@@ -29,7 +29,7 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; connect-src ipc: http://ipc.localhost; img-src 'self' asset: http://asset.localhost data:; style-src 'self' 'unsafe-inline'; script-src 'self'"
     }
   },
   "bundle": {

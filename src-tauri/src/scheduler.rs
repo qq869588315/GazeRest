@@ -10,7 +10,7 @@ use crate::{
 };
 
 const IDLE_PAUSE_SECONDS: u64 = 60;
-const IDLE_RESET_SECONDS: u64 = 300;
+const SLEEP_RESET_SECONDS: i64 = 15 * 60;
 
 pub fn spawn_monitor(app: &AppHandle) {
     let app_handle = app.clone();
@@ -148,7 +148,7 @@ fn tick(app: &AppHandle) -> Result<(), String> {
             guard.runtime.current_status = AppStatus::Running;
         }
 
-        if idle_seconds >= IDLE_RESET_SECONDS || delta >= IDLE_RESET_SECONDS as i64 {
+        if delta >= SLEEP_RESET_SECONDS {
             guard.runtime.active_elapsed_seconds = 0;
             guard.runtime.last_idle_detected_at = Some(utc_now());
         } else if idle_seconds >= IDLE_PAUSE_SECONDS {

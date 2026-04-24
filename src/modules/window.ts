@@ -7,8 +7,8 @@ const isTauriRuntime =
   typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
 
 const layoutSizes: Record<MainLayout, { width: number; height: number }> = {
-  onboarding: { width: 780, height: 470 },
-  panel: { width: 780, height: 470 },
+  onboarding: { width: 670, height: 400 },
+  panel: { width: 670, height: 400 },
   settings: { width: 980, height: 680 },
   distance: { width: 520, height: 620 },
 }
@@ -35,6 +35,11 @@ export async function syncMainWindowLayout(layout: MainLayout) {
   }
 
   if (lastSyncedLayout === layout) {
+    return
+  }
+
+  if (lastSyncedLayout === null) {
+    lastSyncedLayout = layout
     return
   }
 

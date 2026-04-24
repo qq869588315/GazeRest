@@ -111,10 +111,14 @@
   min-height: 44px;
   width: fit-content;
   padding: 0 16px;
+  border: 1px solid rgba(116, 148, 178, 0.28);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.98);
+  background: rgba(247, 252, 255, 0.98);
   color: #35506c;
   font-weight: 700;
+  box-shadow:
+    0 8px 16px rgba(44, 75, 105, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.92);
 }
 
 .subSection {
@@ -182,10 +186,13 @@
   position: relative;
   width: 64px;
   height: 36px;
-  border: 0;
+  border: 1px solid rgba(116, 148, 178, 0.24);
   border-radius: 999px;
   background: rgba(214, 225, 236, 0.9);
   transition: background-color 140ms ease;
+  box-shadow:
+    0 8px 16px rgba(44, 75, 105, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
 }
 
 .toggleSwitchActive {
@@ -363,7 +370,7 @@
 .primaryButton,
 .secondaryButton {
   min-height: 54px;
-  border: 0;
+  border: 1px solid rgba(116, 148, 178, 0.32);
   border-radius: 20px;
   font-size: 17px;
   font-weight: 700;
@@ -371,14 +378,15 @@
 
 .quickActionButton,
 .secondaryButton {
-  background: rgba(255, 255, 255, 0.97);
+  background: rgba(247, 252, 255, 0.98);
   color: #35506c;
   box-shadow:
-    0 10px 20px rgba(84, 106, 134, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.86);
+    0 12px 24px rgba(44, 75, 105, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.92);
 }
 
 .primaryButton {
+  border-color: rgba(45, 168, 205, 0.42);
   background: linear-gradient(135deg, #73e6f7, #39b5dc);
   color: #183149;
   box-shadow:

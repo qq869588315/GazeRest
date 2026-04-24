@@ -12,6 +12,18 @@ const TIMER_STYLES: TimerStyle[] = ['minimal', 'breathing', 'guided']
 const REMINDER_LEVELS: ReminderLevel[] = [0, 1, 2, 3]
 const SCHEDULE_DAYS = [1, 2, 3, 4, 5, 6, 7]
 
+function clampPercent(value: number) {
+  return Math.min(100, Math.max(0, value))
+}
+
+function windowOpacityToBackgroundTransparency(windowOpacity: number) {
+  return clampPercent(Math.round((1 - windowOpacity) * 100))
+}
+
+function backgroundTransparencyToWindowOpacity(transparency: number) {
+  return 1 - clampPercent(transparency) / 100
+}
+
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
 
 type SettingsViewProps = {
@@ -39,6 +51,7 @@ export function SettingsView({
 }: SettingsViewProps) {
   const { t } = useTranslation()
   const privacyItems = t('settings.privacyItems', { returnObjects: true }) as string[]
+  const backgroundTransparency = windowOpacityToBackgroundTransparency(draftSettings.windowOpacity)
   const quickActionStatus =
     runtimeState.currentStatus === 'paused' && runtimeState.pausedUntil
       ? t('settings.quickActionsStatusPausedUntil', {
@@ -99,17 +112,17 @@ export function SettingsView({
                   min="0"
                   max="100"
                   step="1"
-                  value={Math.round(draftSettings.windowOpacity * 100)}
+                  value={backgroundTransparency}
                   onChange={(event) =>
                     onChange({
                       ...draftSettings,
-                      windowOpacity: Number(event.target.value) / 100,
+                      windowOpacity: backgroundTransparencyToWindowOpacity(Number(event.target.value)),
                     })
                   }
                 />
                 <span className={styles.rangeValue}>
                   {t('settings.opacityValue', {
-                    value: Math.round(draftSettings.windowOpacity * 100),
+                    value: backgroundTransparency,
                   })}
                 </span>
               </div>

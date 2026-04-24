@@ -1,7 +1,7 @@
 {
   "name": "gazerest",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -20,7 +20,6 @@
     "@tauri-apps/plugin-log": "^2.8.0",
     "@tauri-apps/plugin-positioner": "^2.3.1",
     "clsx": "^2.1.1",
-    "date-fns": "^4.1.0",
     "i18next": "^25.6.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",

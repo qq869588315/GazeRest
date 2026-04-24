@@ -1,4 +1,4 @@
-import type { CSSProperties, MouseEvent, ReactNode } from 'react'
+import type { CSSProperties, PointerEvent, ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { startWindowDragging } from '../../modules/window'
 import { ArrowLeftIcon, CloseIcon, EyeIcon, GearIcon, MinusIcon } from '../icons'
@@ -100,31 +100,36 @@ export function MainWindow({
     ['--window-shell-opacity' as string]: `${Math.min(1, Math.max(0, effectiveWindowOpacity))}`,
   } as CSSProperties
 
-  function handleHeaderMouseDown(event: MouseEvent<HTMLElement>) {
+  function handleDragPointerDown(event: PointerEvent<HTMLElement>) {
+    if (event.button !== 0) {
+      return
+    }
+
     const target = event.target as HTMLElement
     if (target.closest('button, input, select, textarea, a')) {
       return
     }
 
+    event.preventDefault()
     void startWindowDragging()
   }
 
   return (
     <>
       <main className={styles.viewport} style={windowStyle}>
-        <section className={styles.windowShell}>
-          <header className={styles.windowHeader} onMouseDown={handleHeaderMouseDown}>
-            <div className={styles.brandArea} data-tauri-drag-region>
+        <section className={styles.windowShell} onPointerDown={handleDragPointerDown}>
+          <header className={styles.windowHeader}>
+            <div className={styles.brandArea}>
               <div className={styles.logoMark}>
                 <EyeIcon />
                 <span className={styles.logoDot} />
               </div>
-              <div className={styles.brandText} data-tauri-drag-region>
+              <div className={styles.brandText}>
                 <h1 className={styles.windowTitle}>{title}</h1>
                 <p className={styles.windowEyebrow}>{eyebrow}</p>
               </div>
             </div>
-            <div className={styles.headerDragZone} aria-hidden="true" data-tauri-drag-region />
+            <div className={styles.headerDragZone} aria-hidden="true" />
 
             <div className={styles.windowActions}>
               {firstRun ? null : screen === 'panel' ? (
