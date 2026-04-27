@@ -3,7 +3,14 @@ import { useTranslation } from 'react-i18next'
 import clsx from 'clsx'
 import { formatShortTime, localizePausePreset } from '../../modules/format'
 import { playReminderPreview } from '../../modules/sound'
-import type { PausePreset, ReminderLevel, RuntimeState, Settings, TimerStyle } from '../../types/app'
+import type {
+  CloseButtonBehavior,
+  PausePreset,
+  ReminderLevel,
+  RuntimeState,
+  Settings,
+  TimerStyle,
+} from '../../types/app'
 import { StatusPill } from '../components/StatusPill'
 import styles from './SettingsScreen.module.css'
 
@@ -11,6 +18,7 @@ const REMINDER_INTERVALS = [20, 30, 40, 50, 60]
 const TIMER_STYLES: TimerStyle[] = ['minimal', 'breathing', 'guided']
 const REMINDER_LEVELS: ReminderLevel[] = [0, 1, 2, 3]
 const SCHEDULE_DAYS = [1, 2, 3, 4, 5, 6, 7]
+const CLOSE_BUTTON_BEHAVIORS: CloseButtonBehavior[] = ['hide_main_window', 'quit_app']
 
 function clampPercent(value: number) {
   return Math.min(100, Math.max(0, value))
@@ -241,6 +249,28 @@ export function SettingsView({
               />
             </div>
 
+            <LabeledField
+              title={t('settings.closeButtonBehavior')}
+              body={t('settings.closeButtonBehaviorHint')}
+            >
+              <select
+                className={styles.selectControl}
+                value={draftSettings.closeButtonBehavior}
+                onChange={(event) =>
+                  onChange({
+                    ...draftSettings,
+                    closeButtonBehavior: event.target.value as CloseButtonBehavior,
+                  })
+                }
+              >
+                {CLOSE_BUTTON_BEHAVIORS.map((behavior) => (
+                  <option key={behavior} value={behavior}>
+                    {t(`settings.closeButtonOptions.${behavior}`)}
+                  </option>
+                ))}
+              </select>
+            </LabeledField>
+
             <div className={styles.scheduleCard}>
               <div className={styles.scheduleHeader}>
                 <div>
@@ -332,6 +362,10 @@ export function SettingsView({
                     ? t('settings.languageOptions.zh-CN')
                     : t('settings.languageOptions.en-US')
                 }
+              />
+              <PreviewRow
+                label={t('settings.closeButtonBehavior')}
+                value={t(`settings.closeButtonOptions.${savedSettings.closeButtonBehavior}`)}
               />
             </div>
           </SectionCard>

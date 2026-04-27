@@ -108,6 +108,12 @@ export default {
     fullscreenDelayHint: 'Show the reminder after fullscreen ends',
     launchAtStartup: 'Launch at startup',
     launchAtStartupHint: 'Run automatically when the system starts',
+    closeButtonBehavior: 'Close button behavior',
+    closeButtonBehaviorHint: 'Choose what happens when you click the top-right close button',
+    closeButtonOptions: {
+      hide_main_window: 'Hide window, keep tray',
+      quit_app: 'Quit app',
+    },
     workSchedule: 'Work schedule',
     workScheduleHint: 'Only remind during selected hours',
     workWindow: 'Work window',
@@ -191,9 +197,9 @@ export default {
   },
   closePrompt: {
     title: 'What should happen when the window closes?',
-    body: 'GazeRest normally minimizes to the tray and keeps running. You can also quit the app this time.',
-    hint: 'After this, clicking close will minimize the window by default.',
-    minimize: 'Minimize window',
+    body: 'GazeRest can hide the main window and keep running in the tray, or quit the app directly.',
+    hint: 'You can change this later in Settings > Runtime settings.',
+    hideToTray: 'Hide main window',
     quit: 'Quit app',
   },
   errors: {

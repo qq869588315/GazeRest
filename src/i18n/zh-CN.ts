@@ -108,6 +108,12 @@ export default {
     fullscreenDelayHint: '退出全屏后再补提醒',
     launchAtStartup: '开机启动',
     launchAtStartupHint: '系统启动后自动运行',
+    closeButtonBehavior: '关闭按钮行为',
+    closeButtonBehaviorHint: '点击右上角关闭按钮时如何处理主窗口',
+    closeButtonOptions: {
+      hide_main_window: '隐藏主窗口，保留托盘',
+      quit_app: '退出应用',
+    },
     workSchedule: '工作时间段',
     workScheduleHint: '仅在指定时间内启用提醒',
     workWindow: '工作时间段',
@@ -191,9 +197,9 @@ export default {
   },
   closePrompt: {
     title: '关闭窗口时如何处理？',
-    body: 'GazeRest 默认会最小化到托盘继续运行，你也可以这次直接退出应用。',
-    hint: '之后点击关闭按钮时，会默认最小化窗口。',
-    minimize: '最小化窗口',
+    body: 'GazeRest 可以隐藏主窗口并继续在托盘运行，也可以直接退出应用。',
+    hint: '之后可在“设置 > 运行设置”中修改这个行为。',
+    hideToTray: '隐藏主窗口',
     quit: '关闭应用',
   },
   errors: {

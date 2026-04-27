@@ -16,7 +16,7 @@ import styles from './MainWindow.module.css'
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
 type MainScreen = 'panel' | 'settings' | 'distance'
-type CloseDecision = 'minimize' | 'quit'
+type CloseDecision = Settings['closeButtonBehavior']
 
 type MainWindowProps = {
   firstRun: boolean
@@ -195,8 +195,8 @@ export function MainWindow({
       {closePromptOpen ? (
         <ClosePrompt
           windowOpacity={effectiveWindowOpacity}
-          onMinimize={() => onCloseDecision('minimize')}
-          onQuit={() => onCloseDecision('quit')}
+          onHideToTray={() => onCloseDecision('hide_main_window')}
+          onQuit={() => onCloseDecision('quit_app')}
         />
       ) : null}
     </>

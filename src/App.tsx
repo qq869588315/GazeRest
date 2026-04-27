@@ -5,6 +5,7 @@ import {
   bootstrapApp,
   cancelBreak,
   detectDisplaySize,
+  hideMainWindow,
   minimizeMainWindow,
   pauseApp,
   quitApp,
@@ -30,7 +31,7 @@ import { BreakWindow, ReminderWindow } from './ui/windows/Overlays'
 
 type MainScreen = 'panel' | 'settings' | 'distance'
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
-type CloseDecision = 'minimize' | 'quit'
+type CloseDecision = Settings['closeButtonBehavior']
 
 const CLOSE_PROMPT_STORAGE_KEY = 'gazerest.closePromptSeen'
 const windowView = getWindowView()
@@ -76,6 +77,10 @@ function App() {
 
   const reportError = useEffectEvent((value: unknown) => {
     setError(normalizeError(value, t))
+  })
+
+  const handleCloseIntent = useEffectEvent(() => {
+    void requestClose().catch((value: unknown) => reportError(value))
   })
 
   const applySnapshot = useEffectEvent(
@@ -149,12 +154,7 @@ function App() {
       )
       disposers.push(
         await subscribeEvent<null>('close-intent', () => {
-          if (hasSeenClosePrompt()) {
-            void minimizeMainWindow().catch((value: unknown) => reportError(value))
-            return
-          }
-
-          setClosePromptOpen(true)
+          handleCloseIntent()
         }),
       )
     }
@@ -177,6 +177,10 @@ function App() {
   }, [activeLayout, loading, reportError])
 
   async function persistSettings(nextSettings: Settings, mode: 'explicit' | 'immediate') {
+    const closeBehaviorChanged =
+      savedSettings !== null &&
+      savedSettings.closeButtonBehavior !== nextSettings.closeButtonBehavior
+
     if (mode === 'explicit') {
       setSaveStatus('saving')
     }
@@ -188,6 +192,9 @@ function App() {
       setSavedSettings(saved)
       setDraftSettings(saved)
       await i18n.changeLanguage(saved.language)
+      if (closeBehaviorChanged) {
+        markClosePromptSeen()
+      }
 
       if (mode === 'explicit') {
         setSaveStatus('saved')
@@ -225,20 +232,43 @@ function App() {
     markClosePromptSeen()
 
     try {
-      if (decision === 'quit') {
+      if (savedSettings === null) {
+        return
+      }
+
+      const nextSettings = {
+        ...savedSettings,
+        closeButtonBehavior: decision,
+      }
+      await persistSettings(nextSettings, 'immediate')
+
+      if (decision === 'quit_app') {
         await quitApp()
         return
       }
 
-      await minimizeMainWindow()
+      await hideMainWindow()
     } catch (value) {
       setError(normalizeError(value, t))
     }
   }
 
+  async function runCloseButtonBehavior() {
+    if (!savedSettings) {
+      return
+    }
+
+    if (savedSettings.closeButtonBehavior === 'quit_app') {
+      await quitApp()
+      return
+    }
+
+    await hideMainWindow()
+  }
+
   async function requestClose() {
     if (hasSeenClosePrompt()) {
-      await handleCloseDecision('minimize')
+      await runCloseButtonBehavior()
       return
     }
 

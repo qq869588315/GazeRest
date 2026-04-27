@@ -51,6 +51,7 @@ pub fn run() {
             commands::pause_app,
             commands::resume_app,
             commands::minimize_main_window,
+            commands::hide_main_window,
             commands::quit_app,
             commands::detect_display_size,
         ])

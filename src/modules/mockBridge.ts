@@ -32,6 +32,7 @@ let settings: Settings = {
   lowDistractionMode: true,
   fullscreenDelayEnabled: true,
   launchAtStartup: true,
+  closeButtonBehavior: 'hide_main_window',
   workScheduleEnabled: false,
   activeDays: [1, 2, 3, 4, 5],
   workTimeStart: '09:00',
@@ -173,6 +174,10 @@ export async function resumeAppMock() {
 }
 
 export async function minimizeMainWindowMock() {
+  return
+}
+
+export async function hideMainWindowMock() {
   return
 }
 

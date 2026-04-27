@@ -34,7 +34,7 @@ type BreakWindowProps = {
 
 type ClosePromptProps = {
   windowOpacity: number
-  onMinimize: () => void
+  onHideToTray: () => void
   onQuit: () => void
 }
 
@@ -170,7 +170,7 @@ export function BreakWindow({
   )
 }
 
-export function ClosePrompt({ windowOpacity, onMinimize, onQuit }: ClosePromptProps) {
+export function ClosePrompt({ windowOpacity, onHideToTray, onQuit }: ClosePromptProps) {
   const { t } = useTranslation()
 
   return (
@@ -183,8 +183,8 @@ export function ClosePrompt({ windowOpacity, onMinimize, onQuit }: ClosePromptPr
           <h3>{t('closePrompt.title')}</h3>
           <p>{t('closePrompt.body')}</p>
           <div className={styles.closePromptActions}>
-            <button type="button" className={styles.primaryButton} autoFocus onClick={onMinimize}>
-              {t('closePrompt.minimize')}
+            <button type="button" className={styles.primaryButton} autoFocus onClick={onHideToTray}>
+              {t('closePrompt.hideToTray')}
             </button>
             <button type="button" className={styles.secondaryButton} onClick={onQuit}>
               {t('closePrompt.quit')}

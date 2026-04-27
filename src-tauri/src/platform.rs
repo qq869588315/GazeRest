@@ -119,14 +119,18 @@ fn detect_display_size_windows() -> Result<DetectedDisplaySize, String> {
 
     let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
     if stdout.is_empty() || stdout == "null" {
-        return Err("Could not detect the monitor size automatically. Please enter it manually.".into());
+        return Err(
+            "Could not detect the monitor size automatically. Please enter it manually.".into(),
+        );
     }
 
     let payload: MonitorSizePayload = serde_json::from_str(&stdout)
         .map_err(|error| format!("Failed to parse monitor size: {error}"))?;
 
     if payload.max_horizontal_image_size <= 0.0 || payload.max_vertical_image_size <= 0.0 {
-        return Err("Could not detect the monitor size automatically. Please enter it manually.".into());
+        return Err(
+            "Could not detect the monitor size automatically. Please enter it manually.".into(),
+        );
     }
 
     Ok(DetectedDisplaySize {

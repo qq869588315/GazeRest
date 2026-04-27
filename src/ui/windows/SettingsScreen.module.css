@@ -77,6 +77,10 @@
   margin-top: 8px;
 }
 
+.toggleGrid + .fieldCard {
+  margin-top: 8px;
+}
+
 .fieldHeader strong,
 .toggleTile strong,
 .subSectionHeader strong {

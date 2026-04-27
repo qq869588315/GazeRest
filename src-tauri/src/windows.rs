@@ -99,6 +99,14 @@ pub fn minimize_main_window(app: &AppHandle) -> Result<(), String> {
     window.minimize().map_err(|error| error.to_string())
 }
 
+pub fn hide_main_window(app: &AppHandle) -> Result<(), String> {
+    let Some(window) = app.get_webview_window(MAIN_WINDOW_LABEL) else {
+        return Ok(());
+    };
+
+    window.hide().map_err(|error| error.to_string())
+}
+
 pub fn show_reminder(
     app: &AppHandle,
     level: i64,

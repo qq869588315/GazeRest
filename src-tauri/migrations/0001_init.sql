@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS settings (
   low_distraction_mode INTEGER NOT NULL DEFAULT 1,
   fullscreen_delay_enabled INTEGER NOT NULL DEFAULT 1,
   launch_at_startup INTEGER NOT NULL DEFAULT 1,
+  close_button_behavior TEXT NOT NULL DEFAULT 'hide_main_window',
   work_schedule_enabled INTEGER NOT NULL DEFAULT 0,
   active_days_json TEXT NOT NULL,
   work_time_start TEXT NULL,

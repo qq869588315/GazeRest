@@ -10,6 +10,7 @@ export type TimerStyle = 'minimal' | 'breathing' | 'guided'
 export type PausePreset = 'minutes_30' | 'hour_1' | 'today'
 export type ReminderAction = 'started_break' | 'skipped' | 'snoozed' | 'ignored'
 export type WindowView = 'main' | 'reminder' | 'break'
+export type CloseButtonBehavior = 'hide_main_window' | 'quit_app'
 
 export interface Settings {
   id: number
@@ -22,6 +23,7 @@ export interface Settings {
   lowDistractionMode: boolean
   fullscreenDelayEnabled: boolean
   launchAtStartup: boolean
+  closeButtonBehavior: CloseButtonBehavior
   workScheduleEnabled: boolean
   activeDays: number[]
   workTimeStart: string | null

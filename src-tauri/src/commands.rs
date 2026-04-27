@@ -2,8 +2,8 @@ use chrono::{Duration, Utc};
 use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::models::{
-    end_of_today_utc, utc_now, AppStatus, BreakSession, DetectedDisplaySize, PausePreset,
-    ReminderAction, ReminderEvent, RuntimeState, Settings,
+    end_of_today_utc, normalize_close_button_behavior, utc_now, AppStatus, BreakSession,
+    DetectedDisplaySize, PausePreset, ReminderAction, ReminderEvent, RuntimeState, Settings,
 };
 use crate::state::AppContext;
 
@@ -95,6 +95,11 @@ pub fn minimize_main_window(app: AppHandle) -> CommandResult<()> {
 }
 
 #[tauri::command]
+pub fn hide_main_window(app: AppHandle) -> CommandResult<()> {
+    hide_main_window_inner(&app)
+}
+
+#[tauri::command]
 pub fn quit_app(app: AppHandle, state: State<'_, AppContext>) -> CommandResult<()> {
     quit_app_inner(&app, &state)
 }
@@ -116,6 +121,8 @@ pub fn save_settings_inner(
     mut settings: Settings,
 ) -> CommandResult<Settings> {
     settings.window_opacity = settings.window_opacity.clamp(0.0, 1.0);
+    settings.close_button_behavior =
+        normalize_close_button_behavior(&settings.close_button_behavior).into();
     state.db.save_settings(&settings)?;
 
     {
@@ -333,6 +340,10 @@ pub fn resume_app_inner(app: &AppHandle, state: &AppContext) -> CommandResult<()
 
 pub fn minimize_main_window_inner(app: &AppHandle) -> CommandResult<()> {
     crate::windows::minimize_main_window(app)
+}
+
+pub fn hide_main_window_inner(app: &AppHandle) -> CommandResult<()> {
+    crate::windows::hide_main_window(app)
 }
 
 pub fn quit_app_inner(app: &AppHandle, state: &AppContext) -> CommandResult<()> {

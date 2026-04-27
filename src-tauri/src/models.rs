@@ -51,6 +51,7 @@ pub struct Settings {
     pub low_distraction_mode: bool,
     pub fullscreen_delay_enabled: bool,
     pub launch_at_startup: bool,
+    pub close_button_behavior: String,
     pub work_schedule_enabled: bool,
     pub active_days: Vec<u32>,
     pub work_time_start: Option<String>,
@@ -159,6 +160,7 @@ impl Settings {
             low_distraction_mode: true,
             fullscreen_delay_enabled: true,
             launch_at_startup: true,
+            close_button_behavior: default_close_button_behavior().into(),
             work_schedule_enabled: false,
             active_days: vec![1, 2, 3, 4, 5],
             work_time_start: Some("09:00".into()),
@@ -175,6 +177,17 @@ impl Settings {
             created_at: now.clone(),
             updated_at: now,
         }
+    }
+}
+
+pub fn default_close_button_behavior() -> &'static str {
+    "hide_main_window"
+}
+
+pub fn normalize_close_button_behavior(value: &str) -> &'static str {
+    match value {
+        "quit_app" => "quit_app",
+        _ => default_close_button_behavior(),
     }
 }
 

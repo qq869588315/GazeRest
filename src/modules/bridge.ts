@@ -13,6 +13,7 @@ import {
   closeAppMock,
   detectDisplaySizeMock,
   listenMock,
+  hideMainWindowMock,
   minimizeMainWindowMock,
   pauseAppMock,
   resumeAppMock,
@@ -86,6 +87,13 @@ export async function minimizeMainWindow() {
     return minimizeMainWindowMock()
   }
   return invoke<void>('minimize_main_window')
+}
+
+export async function hideMainWindow() {
+  if (!isTauriRuntime) {
+    return hideMainWindowMock()
+  }
+  return invoke<void>('hide_main_window')
 }
 
 export async function quitApp() {
