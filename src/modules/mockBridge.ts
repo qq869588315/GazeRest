@@ -26,6 +26,7 @@ let settings: Settings = {
   language: 'zh-CN',
   reminderIntervalMinutes: 20,
   breakDurationSeconds: 20,
+  autoCloseBreakWindow: true,
   reminderLevel: 1,
   soundEnabled: false,
   soundType: null,
@@ -50,6 +51,7 @@ let settings: Settings = {
 
 let activeReminder: ReminderEvent | null = null
 let activeBreak: BreakSession | null = null
+let breakCountdownTimer: number | null = null
 
 let snapshot: BootstrapPayload = {
   settings,
@@ -98,6 +100,7 @@ export async function saveSettingsMock(nextSettings: Settings) {
 }
 
 export async function startBreakMock(triggeredByReminderEventId: number | null) {
+  clearBreakCountdownMock()
   activeBreak = {
     id: Date.now(),
     startedAt: new Date().toISOString(),
@@ -124,28 +127,39 @@ export async function startBreakMock(triggeredByReminderEventId: number | null) 
   }
   emit('state-updated', snapshot)
   emit('break-tick', activeBreak)
+  if (typeof window !== 'undefined') {
+    breakCountdownTimer = window.setInterval(tickBreakCountdownMock, 1000)
+  }
   return activeBreak
 }
 
 export async function cancelBreakMock() {
-  activeBreak = activeBreak
+  clearBreakCountdownMock()
+  const finishedBreak = activeBreak
     ? {
         ...activeBreak,
-        status: 'canceled',
+        status: activeBreak.remainingSeconds <= 0 ? 'completed' : 'canceled',
+        cancelReason: activeBreak.remainingSeconds <= 0 ? null : 'user_cancelled',
         endedAt: new Date().toISOString(),
       }
     : null
 
+  activeBreak = null
+
   snapshot = {
     ...snapshot,
-    activeBreak,
+    activeBreak: null,
     runtimeState: {
       ...snapshot.runtimeState,
       currentStatus: 'running',
+      activeElapsedSeconds: 0,
+      nextReminderDueAt: new Date(
+        Date.now() + settings.reminderIntervalMinutes * 60 * 1000,
+      ).toISOString(),
     },
   }
+  emit('break-finished', finishedBreak)
   emit('state-updated', snapshot)
-  emit('break-finished', activeBreak)
 }
 
 export async function pauseAppMock(preset: PausePreset) {
@@ -251,4 +265,60 @@ function emit<T>(event: EventName, payload: T) {
   for (const handler of bucket) {
     handler(payload)
   }
+}
+
+function clearBreakCountdownMock() {
+  if (breakCountdownTimer !== null && typeof window !== 'undefined') {
+    window.clearInterval(breakCountdownTimer)
+  }
+  breakCountdownTimer = null
+}
+
+function tickBreakCountdownMock() {
+  if (!activeBreak) {
+    clearBreakCountdownMock()
+    return
+  }
+
+  activeBreak = {
+    ...activeBreak,
+    remainingSeconds: Math.max(0, activeBreak.remainingSeconds - 1),
+  }
+
+  snapshot = {
+    ...snapshot,
+    activeBreak,
+  }
+  emit('break-tick', activeBreak)
+  emit('state-updated', snapshot)
+
+  if (activeBreak.remainingSeconds > 0) {
+    return
+  }
+
+  clearBreakCountdownMock()
+  if (!settings.autoCloseBreakWindow) {
+    return
+  }
+
+  const finishedBreak = {
+    ...activeBreak,
+    status: 'completed',
+    endedAt: new Date().toISOString(),
+  }
+  activeBreak = null
+  snapshot = {
+    ...snapshot,
+    activeBreak: null,
+    runtimeState: {
+      ...snapshot.runtimeState,
+      currentStatus: 'running',
+      activeElapsedSeconds: 0,
+      nextReminderDueAt: new Date(
+        Date.now() + settings.reminderIntervalMinutes * 60 * 1000,
+      ).toISOString(),
+    },
+  }
+  emit('break-finished', finishedBreak)
+  emit('state-updated', snapshot)
 }

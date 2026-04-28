@@ -87,6 +87,8 @@ export default {
     timerSectionBody: '设置 20 秒休息窗口的展示方式。',
     breakDuration: '休息时长',
     breakDurationHint: 'MVP 阶段固定为 20 秒',
+    autoCloseBreakWindow: '倒计时结束后自动关闭',
+    autoCloseBreakWindowHint: '倒计时到 0 后关闭休息弹窗，并直接开始下一轮提醒。',
     timerStyle: '倒计时样式',
     timerStyles: {
       minimal: {

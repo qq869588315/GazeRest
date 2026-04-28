@@ -3,6 +3,7 @@ CREATE TABLE IF NOT EXISTS settings (
   language TEXT NOT NULL,
   reminder_interval_minutes INTEGER NOT NULL,
   break_duration_seconds INTEGER NOT NULL,
+  auto_close_break_window INTEGER NOT NULL DEFAULT 1,
   reminder_level INTEGER NOT NULL,
   sound_enabled INTEGER NOT NULL DEFAULT 0,
   sound_type TEXT NULL,

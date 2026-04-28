@@ -35,6 +35,7 @@ pub fn spawn_break_countdown(app: AppHandle, generation: u64) {
             return;
         }
 
+        let auto_close_break_window = guard.settings.auto_close_break_window;
         let Some(active_break) = guard.active_break.as_mut() else {
             return;
         };
@@ -53,17 +54,21 @@ pub fn spawn_break_countdown(app: AppHandle, generation: u64) {
             continue;
         }
 
+        if !auto_close_break_window {
+            drop(guard);
+            let _ = app.emit("break-tick", Some(tick_payload));
+            let _ = commands::emit_snapshot(&app);
+            return;
+        }
+
         let mut finished = tick_payload.clone();
         finished.status = "completed".into();
         finished.ended_at = Some(utc_now());
         let session_id = finished.id;
 
         guard.active_break = None;
-        guard.runtime.current_status = AppStatus::Paused;
-        guard.runtime.active_elapsed_seconds = 0;
-        guard.runtime.paused_until = None;
-        guard.runtime.updated_at = utc_now();
-        guard.runtime.next_reminder_due_at = None;
+        let settings = guard.settings.clone();
+        commands::reset_runtime_for_next_round(&settings, &mut guard.runtime);
         if let Err(error) = state.db.finish_break_session(session_id, "completed", None) {
             log::error!("更新休息会话失败: {error}");
         }

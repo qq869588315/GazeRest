@@ -47,6 +47,11 @@ impl Database {
         )?;
         ensure_settings_column(
             &connection,
+            "auto_close_break_window",
+            "INTEGER NOT NULL DEFAULT 1",
+        )?;
+        ensure_settings_column(
+            &connection,
             "close_button_behavior",
             "TEXT NOT NULL DEFAULT 'hide_main_window'",
         )?;
@@ -61,8 +66,8 @@ impl Database {
         let connection = self.connect()?;
         let maybe_row = connection
       .query_row(
-        "SELECT id, language, reminder_interval_minutes, break_duration_seconds, reminder_level,
-                sound_enabled, sound_type, low_distraction_mode, fullscreen_delay_enabled, launch_at_startup,
+        "SELECT id, language, reminder_interval_minutes, break_duration_seconds, auto_close_break_window,
+                reminder_level, sound_enabled, sound_type, low_distraction_mode, fullscreen_delay_enabled, launch_at_startup,
                 close_button_behavior, work_schedule_enabled, active_days_json, work_time_start, work_time_end,
                 timer_style, status_icon_mode, window_opacity, display_width_cm, display_height_cm,
                 recommended_viewing_distance_cm, has_completed_onboarding, created_at, updated_at
@@ -87,17 +92,18 @@ impl Database {
         connection
             .execute(
                 "INSERT OR REPLACE INTO settings (
-          id, language, reminder_interval_minutes, break_duration_seconds, reminder_level,
-          sound_enabled, sound_type, low_distraction_mode, fullscreen_delay_enabled, launch_at_startup,
+          id, language, reminder_interval_minutes, break_duration_seconds, auto_close_break_window,
+          reminder_level, sound_enabled, sound_type, low_distraction_mode, fullscreen_delay_enabled, launch_at_startup,
           close_button_behavior, work_schedule_enabled, active_days_json, work_time_start, work_time_end,
           timer_style, status_icon_mode, window_opacity, display_width_cm, display_height_cm,
           recommended_viewing_distance_cm, has_completed_onboarding, created_at, updated_at
-        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24)",
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25)",
                 params![
                     settings.id,
                     settings.language,
                     settings.reminder_interval_minutes,
                     settings.break_duration_seconds,
+                    bool_to_i64(settings.auto_close_break_window),
                     settings.reminder_level,
                     bool_to_i64(settings.sound_enabled),
                     settings.sound_type,
@@ -336,27 +342,28 @@ fn map_settings(row: &rusqlite::Row<'_>) -> rusqlite::Result<Settings> {
         language: row.get(1)?,
         reminder_interval_minutes: row.get(2)?,
         break_duration_seconds: row.get(3)?,
-        reminder_level: row.get(4)?,
-        sound_enabled: row.get::<_, i64>(5)? == 1,
-        sound_type: row.get(6)?,
-        low_distraction_mode: row.get::<_, i64>(7)? == 1,
-        fullscreen_delay_enabled: row.get::<_, i64>(8)? == 1,
-        launch_at_startup: row.get::<_, i64>(9)? == 1,
-        close_button_behavior: normalize_close_button_behavior(&row.get::<_, String>(10)?).into(),
-        work_schedule_enabled: row.get::<_, i64>(11)? == 1,
-        active_days: serde_json::from_str::<Vec<u32>>(&row.get::<_, String>(12)?)
+        auto_close_break_window: row.get::<_, i64>(4)? == 1,
+        reminder_level: row.get(5)?,
+        sound_enabled: row.get::<_, i64>(6)? == 1,
+        sound_type: row.get(7)?,
+        low_distraction_mode: row.get::<_, i64>(8)? == 1,
+        fullscreen_delay_enabled: row.get::<_, i64>(9)? == 1,
+        launch_at_startup: row.get::<_, i64>(10)? == 1,
+        close_button_behavior: normalize_close_button_behavior(&row.get::<_, String>(11)?).into(),
+        work_schedule_enabled: row.get::<_, i64>(12)? == 1,
+        active_days: serde_json::from_str::<Vec<u32>>(&row.get::<_, String>(13)?)
             .unwrap_or_else(|_| vec![1, 2, 3, 4, 5]),
-        work_time_start: row.get(13)?,
-        work_time_end: row.get(14)?,
-        timer_style: timer_style_from_str(&row.get::<_, String>(15)?),
-        status_icon_mode: row.get(16)?,
-        window_opacity: row.get(17)?,
-        display_width_cm: row.get(18)?,
-        display_height_cm: row.get(19)?,
-        recommended_viewing_distance_cm: row.get(20)?,
-        has_completed_onboarding: row.get::<_, i64>(21)? == 1,
-        created_at: row.get(22)?,
-        updated_at: row.get(23)?,
+        work_time_start: row.get(14)?,
+        work_time_end: row.get(15)?,
+        timer_style: timer_style_from_str(&row.get::<_, String>(16)?),
+        status_icon_mode: row.get(17)?,
+        window_opacity: row.get(18)?,
+        display_width_cm: row.get(19)?,
+        display_height_cm: row.get(20)?,
+        recommended_viewing_distance_cm: row.get(21)?,
+        has_completed_onboarding: row.get::<_, i64>(22)? == 1,
+        created_at: row.get(23)?,
+        updated_at: row.get(24)?,
     })
 }
 

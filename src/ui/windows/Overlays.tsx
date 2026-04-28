@@ -99,8 +99,8 @@ export function BreakWindow({
     breakSession?.remainingSeconds ?? breakSession?.durationSeconds ?? 20,
   )
   const style = breakSession?.style ?? 'minimal'
-  const totalSeconds = breakSession?.durationSeconds ?? 20
-  const remainingSeconds = breakSession === null ? totalSeconds : displayRemainingSeconds
+  const totalSeconds = Math.max(1, breakSession?.durationSeconds ?? 20)
+  const remainingSeconds = Math.max(0, Math.min(displayRemainingSeconds, totalSeconds))
   const progress = Math.max(0, Math.min(1, 1 - remainingSeconds / Math.max(totalSeconds, 1)))
   const hint =
     style === 'guided'
@@ -117,7 +117,20 @@ export function BreakWindow({
 
   useEffect(() => {
     if (!breakSession) {
-      setDisplayRemainingSeconds(totalSeconds)
+      setDisplayRemainingSeconds((current) =>
+        current > 0 && current <= totalSeconds ? current : totalSeconds,
+      )
+      const timer = window.setInterval(() => {
+        setDisplayRemainingSeconds((current) => Math.max(0, current - 1))
+      }, 1000)
+
+      return () => {
+        window.clearInterval(timer)
+      }
+    }
+
+    if (breakSession.remainingSeconds <= 0) {
+      setDisplayRemainingSeconds(0)
       return
     }
 

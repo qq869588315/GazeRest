@@ -216,17 +216,21 @@ pub fn cancel_break_inner(app: &AppHandle, state: &AppContext) -> CommandResult<
     };
 
     guard.break_generation += 1;
-    session.status = "canceled".into();
-    session.cancel_reason = Some("user_cancelled".into());
+    let completed = session.remaining_seconds <= 0;
+    let status = if completed { "completed" } else { "canceled" };
+    let cancel_reason = if completed {
+        None
+    } else {
+        Some("user_cancelled")
+    };
+    session.status = status.into();
+    session.cancel_reason = cancel_reason.map(str::to_string);
     session.ended_at = Some(utc_now());
     state
         .db
-        .finish_break_session(session.id, "canceled", Some("user_cancelled"))?;
-    guard.runtime.current_status = AppStatus::Paused;
-    guard.runtime.active_elapsed_seconds = 0;
-    guard.runtime.paused_until = None;
-    guard.runtime.updated_at = utc_now();
-    guard.runtime.next_reminder_due_at = None;
+        .finish_break_session(session.id, status, cancel_reason)?;
+    let settings = guard.settings.clone();
+    reset_runtime_for_next_round(&settings, &mut guard.runtime);
     state.db.save_runtime(&guard.runtime)?;
     drop(guard);
 
@@ -361,6 +365,22 @@ pub fn clear_pending_reminder(runtime: &mut RuntimeState) {
     runtime.pending_reminder_event_id = None;
     runtime.pending_reminder_level = None;
     runtime.deferred_reminder_pending = false;
+}
+
+pub fn reset_runtime_for_next_round(settings: &Settings, runtime: &mut RuntimeState) {
+    runtime.current_status = if crate::platform::within_schedule(settings) {
+        AppStatus::Running
+    } else {
+        AppStatus::OutsideSchedule
+    };
+    runtime.active_elapsed_seconds = 0;
+    runtime.paused_until = None;
+    runtime.updated_at = utc_now();
+    runtime.next_reminder_due_at = if matches!(runtime.current_status, AppStatus::Running) {
+        next_due_at(settings, runtime)
+    } else {
+        None
+    };
 }
 
 pub fn next_due_at(settings: &Settings, runtime: &RuntimeState) -> Option<String> {

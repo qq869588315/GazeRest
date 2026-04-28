@@ -17,6 +17,7 @@ export interface Settings {
   language: 'zh-CN' | 'en-US'
   reminderIntervalMinutes: number
   breakDurationSeconds: number
+  autoCloseBreakWindow: boolean
   reminderLevel: ReminderLevel
   soundEnabled: boolean
   soundType: string | null

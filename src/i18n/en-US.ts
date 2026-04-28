@@ -87,6 +87,8 @@ export default {
     timerSectionBody: 'Choose how the 20-second break window should look.',
     breakDuration: 'Break duration',
     breakDurationHint: 'Fixed to 20 seconds in MVP',
+    autoCloseBreakWindow: 'Auto-close after countdown',
+    autoCloseBreakWindowHint: 'Close the break popup at 0 and immediately start the next reminder cycle.',
     timerStyle: 'Timer style',
     timerStyles: {
       minimal: {

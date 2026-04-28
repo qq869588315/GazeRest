@@ -198,6 +198,18 @@ export function SettingsView({
               </div>
             </LabeledField>
 
+            <ToggleTile
+              title={t('settings.autoCloseBreakWindow')}
+              body={t('settings.autoCloseBreakWindowHint')}
+              checked={draftSettings.autoCloseBreakWindow}
+              onToggle={(checked) =>
+                onChange({
+                  ...draftSettings,
+                  autoCloseBreakWindow: checked,
+                })
+              }
+            />
+
             <div className={styles.timerStyleList}>
               {TIMER_STYLES.map((style) => {
                 const active = draftSettings.timerStyle === style
