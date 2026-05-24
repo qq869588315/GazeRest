@@ -8,9 +8,11 @@ export function calculateViewingDistance(widthCm: number, heightCm: number) {
 
 export function formatDistance(
   value: number | null,
-  _approximate = false,
-  _locale: string | undefined = undefined,
+  approximate = false,
+  locale: string | undefined = undefined,
 ) {
+  void approximate
+  void locale
   if (value === null || !Number.isFinite(value) || value <= 0) {
     return '--'
   }

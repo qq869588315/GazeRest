@@ -5,8 +5,8 @@ use rusqlite::{params, Connection, OptionalExtension};
 use tauri::Manager;
 
 use crate::models::{
-    normalize_close_button_behavior, utc_now, AppStatus, BreakSession, ReminderAction,
-    ReminderEvent, RuntimeState, Settings, TimerStyle, TodaySummary,
+    local_date_key, normalize_close_button_behavior, normalize_settings, utc_now, AppStatus,
+    BreakSession, ReminderAction, ReminderEvent, RuntimeState, Settings, TimerStyle, TodaySummary,
 };
 
 pub struct Database {
@@ -59,6 +59,48 @@ impl Database {
         ensure_settings_column(&connection, "display_width_cm", "REAL NULL")?;
         ensure_settings_column(&connection, "display_height_cm", "REAL NULL")?;
         ensure_settings_column(&connection, "recommended_viewing_distance_cm", "REAL NULL")?;
+        ensure_table_column(
+            &connection,
+            "runtime_state",
+            "today_active_elapsed_seconds",
+            "INTEGER NOT NULL DEFAULT 0",
+        )?;
+        ensure_table_column(
+            &connection,
+            "runtime_state",
+            "today_active_date",
+            "TEXT NOT NULL DEFAULT ''",
+        )?;
+        ensure_table_column(
+            &connection,
+            "runtime_state",
+            "today_max_active_streak_seconds",
+            "INTEGER NOT NULL DEFAULT 0",
+        )?;
+        connection
+            .execute(
+                "UPDATE runtime_state
+                 SET today_active_date = ?1
+                 WHERE today_active_date IS NULL OR today_active_date = ''",
+                params![local_date_key()],
+            )
+            .map_err(|error| error.to_string())?;
+        connection
+            .execute(
+                "UPDATE runtime_state
+                 SET today_active_elapsed_seconds = 0
+                 WHERE today_active_elapsed_seconds IS NULL",
+                [],
+            )
+            .map_err(|error| error.to_string())?;
+        connection
+            .execute(
+                "UPDATE runtime_state
+                 SET today_max_active_streak_seconds = 0
+                 WHERE today_max_active_streak_seconds IS NULL",
+                [],
+            )
+            .map_err(|error| error.to_string())?;
         Ok(())
     }
 
@@ -78,7 +120,11 @@ impl Database {
       .optional()
       .map_err(|error| error.to_string())?;
 
-        if let Some(settings) = maybe_row {
+        if let Some(mut settings) = maybe_row {
+            if normalize_settings(&mut settings) {
+                settings.updated_at = utc_now();
+                self.save_settings(&settings)?;
+            }
             return Ok(settings);
         }
 
@@ -135,7 +181,8 @@ impl Database {
         let connection = self.connect()?;
         let maybe_row = connection
             .query_row(
-                "SELECT id, current_status, active_elapsed_seconds, next_reminder_due_at,
+                "SELECT id, current_status, active_elapsed_seconds, today_active_elapsed_seconds,
+                today_active_date, today_max_active_streak_seconds, next_reminder_due_at,
                 paused_until, deferred_reminder_pending, pending_reminder_event_id,
                 pending_reminder_level, last_fullscreen_detected_at, last_idle_detected_at,
                 last_activity_at, updated_at
@@ -160,14 +207,18 @@ impl Database {
         connection
             .execute(
                 "INSERT OR REPLACE INTO runtime_state (
-          id, current_status, active_elapsed_seconds, next_reminder_due_at, paused_until,
+          id, current_status, active_elapsed_seconds, today_active_elapsed_seconds,
+          today_active_date, today_max_active_streak_seconds, next_reminder_due_at, paused_until,
           deferred_reminder_pending, pending_reminder_event_id, pending_reminder_level,
           last_fullscreen_detected_at, last_idle_detected_at, last_activity_at, updated_at
-        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)",
                 params![
                     runtime.id,
                     app_status_to_str(&runtime.current_status),
                     runtime.active_elapsed_seconds,
+                    runtime.today_active_elapsed_seconds,
+                    runtime.today_active_date,
+                    runtime.today_max_active_streak_seconds,
                     runtime.next_reminder_due_at,
                     runtime.paused_until,
                     bool_to_i64(runtime.deferred_reminder_pending),
@@ -297,13 +348,16 @@ impl Database {
 
         let skipped_count = count_by_action(&connection, &start_utc, &end_utc, "skipped")?;
         let snoozed_count = count_by_action(&connection, &start_utc, &end_utc, "snoozed")?;
-        let max_active_streak_seconds = connection
+        let reminder_max_active_streak_seconds = connection
       .query_row(
         "SELECT COALESCE(MAX(active_elapsed_seconds), 0) FROM reminder_events WHERE triggered_at >= ?1 AND triggered_at < ?2",
         params![start_utc, end_utc],
         |row| row.get::<_, i64>(0),
       )
       .map_err(|error| error.to_string())?;
+        let runtime_max_active_streak_seconds = runtime_today_max_active_seconds(&connection)?;
+        let max_active_streak_seconds =
+            reminder_max_active_streak_seconds.max(runtime_max_active_streak_seconds);
         let total_prompts = completed_break_count + skipped_count + snoozed_count;
         let completion_rate = if total_prompts == 0 {
             0
@@ -315,9 +369,62 @@ impl Database {
             completed_break_count,
             skipped_count,
             snoozed_count,
+            today_active_elapsed_seconds: runtime_today_active_seconds(&connection)?,
             max_active_streak_seconds,
             completion_rate,
         })
+    }
+
+    pub fn get_latest_running_break_session(&self) -> Result<Option<BreakSession>, String> {
+        let connection = self.connect()?;
+        connection
+            .query_row(
+                "SELECT id, started_at, ended_at, duration_seconds, status, cancel_reason,
+                        triggered_by_reminder_event_id, timer_style, created_at
+                 FROM break_sessions
+                 WHERE status = 'running'
+                 ORDER BY started_at DESC, id DESC
+                 LIMIT 1",
+                [],
+                map_break_session,
+            )
+            .optional()
+            .map_err(|error| error.to_string())
+    }
+
+    pub fn finish_all_running_break_sessions(
+        &self,
+        status: &str,
+        cancel_reason: Option<&str>,
+    ) -> Result<(), String> {
+        let connection = self.connect()?;
+        connection
+            .execute(
+                "UPDATE break_sessions
+         SET ended_at = ?1, status = ?2, cancel_reason = ?3
+         WHERE status = 'running'",
+                params![utc_now(), status, cancel_reason],
+            )
+            .map_err(|error| error.to_string())?;
+        Ok(())
+    }
+
+    pub fn finish_other_running_break_sessions(
+        &self,
+        keep_session_id: i64,
+        status: &str,
+        cancel_reason: Option<&str>,
+    ) -> Result<(), String> {
+        let connection = self.connect()?;
+        connection
+            .execute(
+                "UPDATE break_sessions
+         SET ended_at = ?1, status = ?2, cancel_reason = ?3
+         WHERE status = 'running' AND id <> ?4",
+                params![utc_now(), status, cancel_reason, keep_session_id],
+            )
+            .map_err(|error| error.to_string())?;
+        Ok(())
     }
 }
 
@@ -372,8 +479,17 @@ fn ensure_settings_column(
     column_name: &str,
     definition: &str,
 ) -> Result<(), String> {
+    ensure_table_column(connection, "settings", column_name, definition)
+}
+
+fn ensure_table_column(
+    connection: &Connection,
+    table_name: &str,
+    column_name: &str,
+    definition: &str,
+) -> Result<(), String> {
     let mut statement = connection
-        .prepare("PRAGMA table_info(settings)")
+        .prepare(&format!("PRAGMA table_info({table_name})"))
         .map_err(|error| error.to_string())?;
     let columns = statement
         .query_map([], |row| row.get::<_, String>(1))
@@ -387,25 +503,90 @@ fn ensure_settings_column(
 
     connection
         .execute_batch(&format!(
-            "ALTER TABLE settings ADD COLUMN {column_name} {definition};"
+            "ALTER TABLE {table_name} ADD COLUMN {column_name} {definition};"
         ))
         .map_err(|error| error.to_string())
 }
 
 fn map_runtime(row: &rusqlite::Row<'_>) -> rusqlite::Result<RuntimeState> {
+    let today_active_date = row
+        .get::<_, Option<String>>(4)?
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(local_date_key);
     Ok(RuntimeState {
         id: row.get(0)?,
         current_status: app_status_from_str(&row.get::<_, String>(1)?),
         active_elapsed_seconds: row.get(2)?,
-        next_reminder_due_at: row.get(3)?,
-        paused_until: row.get(4)?,
-        deferred_reminder_pending: row.get::<_, i64>(5)? == 1,
-        pending_reminder_event_id: row.get(6)?,
-        pending_reminder_level: row.get(7)?,
-        last_fullscreen_detected_at: row.get(8)?,
-        last_idle_detected_at: row.get(9)?,
-        last_activity_at: row.get(10)?,
-        updated_at: row.get(11)?,
+        today_active_elapsed_seconds: row.get::<_, Option<i64>>(3)?.unwrap_or(0),
+        today_active_date,
+        today_max_active_streak_seconds: row.get::<_, Option<i64>>(5)?.unwrap_or(0),
+        next_reminder_due_at: row.get(6)?,
+        paused_until: row.get(7)?,
+        deferred_reminder_pending: row.get::<_, i64>(8)? == 1,
+        pending_reminder_event_id: row.get(9)?,
+        pending_reminder_level: row.get(10)?,
+        last_fullscreen_detected_at: row.get(11)?,
+        last_idle_detected_at: row.get(12)?,
+        last_activity_at: row.get(13)?,
+        updated_at: row.get(14)?,
+    })
+}
+
+fn map_break_session(row: &rusqlite::Row<'_>) -> rusqlite::Result<BreakSession> {
+    let duration_seconds = row.get(3)?;
+    Ok(BreakSession {
+        id: row.get(0)?,
+        started_at: row.get(1)?,
+        ended_at: row.get(2)?,
+        duration_seconds,
+        status: row.get(4)?,
+        cancel_reason: row.get(5)?,
+        triggered_by_reminder_event_id: row.get(6)?,
+        style: timer_style_from_str(&row.get::<_, String>(7)?),
+        created_at: row.get(8)?,
+        remaining_seconds: duration_seconds,
+    })
+}
+
+fn runtime_today_active_seconds(connection: &Connection) -> Result<i64, String> {
+    let maybe_value = connection
+        .query_row(
+            "SELECT today_active_elapsed_seconds, today_active_date FROM runtime_state WHERE id = 1",
+            [],
+            |row| {
+                Ok((
+                    row.get::<_, Option<i64>>(0)?.unwrap_or(0),
+                    row.get::<_, Option<String>>(1)?.unwrap_or_default(),
+                ))
+            },
+        )
+        .optional()
+        .map_err(|error| error.to_string())?;
+
+    Ok(match maybe_value {
+        Some((seconds, date)) if date == local_date_key() => seconds,
+        _ => 0,
+    })
+}
+
+fn runtime_today_max_active_seconds(connection: &Connection) -> Result<i64, String> {
+    let maybe_value = connection
+        .query_row(
+            "SELECT today_max_active_streak_seconds, today_active_date FROM runtime_state WHERE id = 1",
+            [],
+            |row| {
+                Ok((
+                    row.get::<_, Option<i64>>(0)?.unwrap_or(0),
+                    row.get::<_, Option<String>>(1)?.unwrap_or_default(),
+                ))
+            },
+        )
+        .optional()
+        .map_err(|error| error.to_string())?;
+
+    Ok(match maybe_value {
+        Some((seconds, date)) if date == local_date_key() => seconds,
+        _ => 0,
     })
 }
 
@@ -420,18 +601,22 @@ pub fn bool_to_i64(value: bool) -> i64 {
 pub fn app_status_to_str(status: &AppStatus) -> &'static str {
     match status {
         AppStatus::Running => "running",
+        AppStatus::ReminderPending => "reminder_pending",
         AppStatus::Paused => "paused",
         AppStatus::Snoozed => "snoozed",
         AppStatus::BreakInProgress => "break_in_progress",
+        AppStatus::BreakCompleted => "break_completed",
         AppStatus::OutsideSchedule => "outside_schedule",
     }
 }
 
 pub fn app_status_from_str(value: &str) -> AppStatus {
     match value {
+        "reminder_pending" => AppStatus::ReminderPending,
         "paused" => AppStatus::Paused,
         "snoozed" => AppStatus::Snoozed,
         "break_in_progress" => AppStatus::BreakInProgress,
+        "break_completed" => AppStatus::BreakCompleted,
         "outside_schedule" => AppStatus::OutsideSchedule,
         _ => AppStatus::Running,
     }

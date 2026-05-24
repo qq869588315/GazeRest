@@ -1,8 +1,10 @@
 export type AppStatus =
   | 'running'
+  | 'reminder_pending'
   | 'paused'
   | 'snoozed'
   | 'break_in_progress'
+  | 'break_completed'
   | 'outside_schedule'
 
 export type ReminderLevel = 0 | 1 | 2 | 3
@@ -49,6 +51,9 @@ export interface RuntimeState {
   id: number
   currentStatus: AppStatus
   activeElapsedSeconds: number
+  todayActiveElapsedSeconds: number
+  todayActiveDate: string
+  todayMaxActiveStreakSeconds: number
   nextReminderDueAt: string | null
   pausedUntil: string | null
   deferredReminderPending: boolean
@@ -92,6 +97,7 @@ export interface TodaySummary {
   completedBreakCount: number
   skippedCount: number
   snoozedCount: number
+  todayActiveElapsedSeconds: number
   maxActiveStreakSeconds: number
   completionRate: number
 }

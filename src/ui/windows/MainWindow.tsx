@@ -34,7 +34,7 @@ type MainWindowProps = {
   onBack: () => void
   onOpenDistance: () => void
   onStartBreak: () => void
-  onToggleLanguage: () => void
+  onLanguageChange: (language: Settings['language']) => void
   onMinimize: () => void
   onCloseRequest: () => void
   onCloseDecision: (decision: CloseDecision) => void
@@ -63,7 +63,7 @@ export function MainWindow({
   onBack,
   onOpenDistance,
   onStartBreak,
-  onToggleLanguage,
+  onLanguageChange,
   onMinimize,
   onCloseRequest,
   onCloseDecision,
@@ -166,7 +166,7 @@ export function MainWindow({
                 onOpenDistance={onOpenDistance}
                 onStartBreak={onStartBreak}
                 onResume={onResume}
-                onToggleLanguage={onToggleLanguage}
+                onLanguageChange={onLanguageChange}
               />
             ) : screen === 'settings' ? (
               <SettingsView

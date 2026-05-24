@@ -2,9 +2,10 @@ use chrono::{Duration, Utc};
 use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::models::{
-    end_of_today_utc, normalize_close_button_behavior, utc_now, AppStatus, BreakSession,
-    DetectedDisplaySize, PausePreset, ReminderAction, ReminderEvent, RuntimeState, Settings,
+    end_of_today_utc, normalize_close_button_behavior, normalize_settings, utc_now, AppStatus,
+    BreakSession, DetectedDisplaySize, PausePreset, RuntimeState, Settings,
 };
+use crate::runtime_service::RuntimeEffect;
 use crate::state::AppContext;
 
 pub type CommandResult<T> = Result<T, String>;
@@ -112,7 +113,52 @@ pub fn detect_display_size() -> CommandResult<DetectedDisplaySize> {
 pub fn emit_snapshot(app: &AppHandle) -> CommandResult<()> {
     let payload = app.state::<AppContext>().snapshot()?;
     app.emit("state-updated", payload)
-        .map_err(|error| error.to_string())
+        .map_err(|error| error.to_string())?;
+    crate::tray_service::sync_tray(app);
+    Ok(())
+}
+
+pub fn apply_effects(app: &AppHandle, effects: Vec<RuntimeEffect>) -> CommandResult<()> {
+    for effect in effects {
+        match effect {
+            RuntimeEffect::ShowReminder(level) => crate::windows::show_reminder(app, level)?,
+            RuntimeEffect::HideReminder => defer_window_action(app, |app| {
+                let _ = crate::windows::hide_reminder(&app);
+            }),
+            RuntimeEffect::ShowBreak => defer_window_action(app, |app| {
+                let _ = crate::windows::show_break(&app);
+            }),
+            RuntimeEffect::HideBreak => defer_window_action(app, |app| {
+                let _ = crate::windows::hide_break(&app);
+            }),
+            RuntimeEffect::PlayReminderSound => crate::sound_service::play_reminder_sound(app),
+            RuntimeEffect::EmitReminder(reminder) => app
+                .emit("reminder-issued", reminder)
+                .map_err(|error| error.to_string())?,
+            RuntimeEffect::EmitBreakTick(session) => app
+                .emit("break-tick", session)
+                .map_err(|error| error.to_string())?,
+            RuntimeEffect::EmitBreakFinished(session) => app
+                .emit("break-finished", session)
+                .map_err(|error| error.to_string())?,
+            RuntimeEffect::AutoHideReminder { reminder_id } => {
+                crate::scheduler::schedule_auto_hide(app.clone(), reminder_id)
+            }
+        }
+    }
+    crate::tray_service::sync_tray(app);
+    Ok(())
+}
+
+fn defer_window_action<F>(app: &AppHandle, action: F)
+where
+    F: FnOnce(AppHandle) + Send + 'static,
+{
+    let app = app.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_millis(120));
+        action(app);
+    });
 }
 
 pub fn save_settings_inner(
@@ -120,6 +166,7 @@ pub fn save_settings_inner(
     state: &AppContext,
     mut settings: Settings,
 ) -> CommandResult<Settings> {
+    normalize_settings(&mut settings);
     settings.window_opacity = settings.window_opacity.clamp(0.0, 1.0);
     settings.close_button_behavior =
         normalize_close_button_behavior(&settings.close_button_behavior).into();
@@ -131,6 +178,7 @@ pub fn save_settings_inner(
             .lock()
             .map_err(|_| "state lock poisoned".to_string())?;
         guard.settings = settings.clone();
+        crate::runtime_service::rollover_today(&mut guard.runtime);
         if !crate::platform::within_schedule(&guard.settings) {
             guard.runtime.current_status = AppStatus::OutsideSchedule;
         } else if matches!(guard.runtime.current_status, AppStatus::OutsideSchedule) {
@@ -153,141 +201,52 @@ pub fn start_break_inner(
     state: &AppContext,
     triggered_by_reminder_event_id: Option<i64>,
 ) -> CommandResult<BreakSession> {
-    let mut guard = state
-        .volatile
-        .lock()
-        .map_err(|_| "state lock poisoned".to_string())?;
-    if let Some(active_break) = guard.active_break.clone() {
-        return Ok(active_break);
-    }
-
-    let reminder_id = triggered_by_reminder_event_id
-        .or_else(|| guard.active_reminder.as_ref().map(|item| item.id));
-    if let Some(id) = reminder_id {
-        state
-            .db
-            .update_reminder_action(id, ReminderAction::StartedBreak, None)?;
-    }
-
-    guard.break_generation += 1;
-    let generation = guard.break_generation;
-    let now = utc_now();
-    let mut session = BreakSession {
-        id: 0,
-        started_at: now.clone(),
-        ended_at: None,
-        duration_seconds: guard.settings.break_duration_seconds,
-        status: "running".into(),
-        cancel_reason: None,
-        triggered_by_reminder_event_id: reminder_id,
-        created_at: now.clone(),
-        style: guard.settings.timer_style,
-        remaining_seconds: guard.settings.break_duration_seconds,
+    let (session, effects) = {
+        let mut guard = state
+            .volatile
+            .lock()
+            .map_err(|_| "state lock poisoned".to_string())?;
+        crate::runtime_service::start_break(&state.db, &mut guard, triggered_by_reminder_event_id)?
     };
-    let session_id = state.db.insert_break_session(&session)?;
-    session.id = session_id;
 
-    clear_pending_reminder(&mut guard.runtime);
-    guard.active_reminder = None;
-    guard.active_break = Some(session.clone());
-    guard.runtime.current_status = AppStatus::BreakInProgress;
-    guard.runtime.updated_at = now;
-    state.db.save_runtime(&guard.runtime)?;
-    drop(guard);
-
-    crate::windows::hide_reminder(app)?;
-    crate::windows::show_break(app)?;
-    app.emit("reminder-issued", Option::<ReminderEvent>::None)
-        .map_err(|error| error.to_string())?;
-    app.emit("break-tick", session.clone())
-        .map_err(|error| error.to_string())?;
+    apply_effects(app, effects)?;
     emit_snapshot(app)?;
-    crate::scheduler::spawn_break_countdown(app.clone(), generation);
     Ok(session)
 }
 
 pub fn cancel_break_inner(app: &AppHandle, state: &AppContext) -> CommandResult<()> {
-    let mut guard = state
-        .volatile
-        .lock()
-        .map_err(|_| "state lock poisoned".to_string())?;
-    let Some(mut session) = guard.active_break.take() else {
-        return Ok(());
+    let effects = {
+        let mut guard = state
+            .volatile
+            .lock()
+            .map_err(|_| "state lock poisoned".to_string())?;
+        crate::runtime_service::cancel_break(&state.db, &mut guard)?
     };
-
-    guard.break_generation += 1;
-    let completed = session.remaining_seconds <= 0;
-    let status = if completed { "completed" } else { "canceled" };
-    let cancel_reason = if completed {
-        None
-    } else {
-        Some("user_cancelled")
-    };
-    session.status = status.into();
-    session.cancel_reason = cancel_reason.map(str::to_string);
-    session.ended_at = Some(utc_now());
-    state
-        .db
-        .finish_break_session(session.id, status, cancel_reason)?;
-    let settings = guard.settings.clone();
-    reset_runtime_for_next_round(&settings, &mut guard.runtime);
-    state.db.save_runtime(&guard.runtime)?;
-    drop(guard);
-
-    crate::windows::hide_break(app)?;
-    app.emit("break-finished", Some(session))
-        .map_err(|error| error.to_string())?;
+    apply_effects(app, effects)?;
     emit_snapshot(app)
 }
 
 pub fn snooze_reminder_inner(app: &AppHandle, state: &AppContext) -> CommandResult<()> {
-    let mut guard = state
-        .volatile
-        .lock()
-        .map_err(|_| "state lock poisoned".to_string())?;
-    if let Some(reminder) = guard.active_reminder.as_ref() {
-        state
-            .db
-            .update_reminder_action(reminder.id, ReminderAction::Snoozed, Some(5))?;
-    }
-
-    guard.active_reminder = None;
-    guard.runtime.current_status = AppStatus::Snoozed;
-    guard.runtime.next_reminder_due_at = Some((Utc::now() + Duration::minutes(5)).to_rfc3339());
-    guard.runtime.updated_at = utc_now();
-    clear_pending_reminder(&mut guard.runtime);
-    state.db.save_runtime(&guard.runtime)?;
-    drop(guard);
-
-    crate::windows::hide_reminder(app)?;
-    app.emit("reminder-issued", Option::<ReminderEvent>::None)
-        .map_err(|error| error.to_string())?;
+    let effects = {
+        let mut guard = state
+            .volatile
+            .lock()
+            .map_err(|_| "state lock poisoned".to_string())?;
+        crate::runtime_service::snooze_reminder(&state.db, &mut guard)?
+    };
+    apply_effects(app, effects)?;
     emit_snapshot(app)
 }
 
 pub fn skip_reminder_inner(app: &AppHandle, state: &AppContext) -> CommandResult<()> {
-    let mut guard = state
-        .volatile
-        .lock()
-        .map_err(|_| "state lock poisoned".to_string())?;
-    if let Some(reminder) = guard.active_reminder.as_ref() {
-        state
-            .db
-            .update_reminder_action(reminder.id, ReminderAction::Skipped, None)?;
-    }
-
-    guard.active_reminder = None;
-    guard.runtime.current_status = AppStatus::Running;
-    guard.runtime.active_elapsed_seconds = 0;
-    guard.runtime.updated_at = utc_now();
-    clear_pending_reminder(&mut guard.runtime);
-    guard.runtime.next_reminder_due_at = next_due_at(&guard.settings, &guard.runtime);
-    state.db.save_runtime(&guard.runtime)?;
-    drop(guard);
-
-    crate::windows::hide_reminder(app)?;
-    app.emit("reminder-issued", Option::<ReminderEvent>::None)
-        .map_err(|error| error.to_string())?;
+    let effects = {
+        let mut guard = state
+            .volatile
+            .lock()
+            .map_err(|_| "state lock poisoned".to_string())?;
+        crate::runtime_service::skip_reminder(&state.db, &mut guard)?
+    };
+    apply_effects(app, effects)?;
     emit_snapshot(app)
 }
 
@@ -296,48 +255,31 @@ pub fn pause_app_inner(
     state: &AppContext,
     preset: PausePreset,
 ) -> CommandResult<()> {
-    let mut guard = state
-        .volatile
-        .lock()
-        .map_err(|_| "state lock poisoned".to_string())?;
-    if let Some(reminder) = guard.active_reminder.as_ref() {
-        let _ = state
-            .db
-            .update_reminder_action(reminder.id, ReminderAction::Ignored, None);
-    }
-
-    guard.active_reminder = None;
-    guard.runtime.current_status = AppStatus::Paused;
-    guard.runtime.paused_until = Some(match preset {
+    let paused_until = match preset {
         PausePreset::Minutes30 => (Utc::now() + Duration::minutes(30)).to_rfc3339(),
         PausePreset::Hour1 => (Utc::now() + Duration::hours(1)).to_rfc3339(),
         PausePreset::Today => end_of_today_utc().to_rfc3339(),
-    });
-    guard.runtime.updated_at = utc_now();
-    clear_pending_reminder(&mut guard.runtime);
-    state.db.save_runtime(&guard.runtime)?;
-    drop(guard);
+    };
+    let effects = {
+        let mut guard = state
+            .volatile
+            .lock()
+            .map_err(|_| "state lock poisoned".to_string())?;
+        crate::runtime_service::pause(&state.db, &mut guard, paused_until)?
+    };
 
-    crate::windows::hide_reminder(app)?;
+    apply_effects(app, effects)?;
     emit_snapshot(app)
 }
 
 pub fn resume_app_inner(app: &AppHandle, state: &AppContext) -> CommandResult<()> {
-    let mut guard = state
-        .volatile
-        .lock()
-        .map_err(|_| "state lock poisoned".to_string())?;
-    guard.runtime.current_status = if crate::platform::within_schedule(&guard.settings) {
-        AppStatus::Running
-    } else {
-        AppStatus::OutsideSchedule
-    };
-    guard.runtime.paused_until = None;
-    guard.runtime.active_elapsed_seconds = 0;
-    guard.runtime.updated_at = utc_now();
-    guard.runtime.next_reminder_due_at = next_due_at(&guard.settings, &guard.runtime);
-    state.db.save_runtime(&guard.runtime)?;
-    drop(guard);
+    {
+        let mut guard = state
+            .volatile
+            .lock()
+            .map_err(|_| "state lock poisoned".to_string())?;
+        crate::runtime_service::resume(&state.db, &mut guard)?;
+    }
 
     emit_snapshot(app)
 }
@@ -365,22 +307,6 @@ pub fn clear_pending_reminder(runtime: &mut RuntimeState) {
     runtime.pending_reminder_event_id = None;
     runtime.pending_reminder_level = None;
     runtime.deferred_reminder_pending = false;
-}
-
-pub fn reset_runtime_for_next_round(settings: &Settings, runtime: &mut RuntimeState) {
-    runtime.current_status = if crate::platform::within_schedule(settings) {
-        AppStatus::Running
-    } else {
-        AppStatus::OutsideSchedule
-    };
-    runtime.active_elapsed_seconds = 0;
-    runtime.paused_until = None;
-    runtime.updated_at = utc_now();
-    runtime.next_reminder_due_at = if matches!(runtime.current_status, AppStatus::Running) {
-        next_due_at(settings, runtime)
-    } else {
-        None
-    };
 }
 
 pub fn next_due_at(settings: &Settings, runtime: &RuntimeState) -> Option<String> {

@@ -6,48 +6,6 @@ pub const REMINDER_WINDOW_LABEL: &str = "reminder";
 pub const BREAK_WINDOW_LABEL: &str = "break";
 pub const TRAY_ID: &str = "main-tray";
 
-pub fn ensure_aux_windows(app: &AppHandle) -> Result<(), String> {
-    if app.get_webview_window(REMINDER_WINDOW_LABEL).is_none() {
-        WebviewWindowBuilder::new(
-            app,
-            REMINDER_WINDOW_LABEL,
-            WebviewUrl::App("index.html?view=reminder".into()),
-        )
-        .title("GazeRest Reminder")
-        .inner_size(460.0, 300.0)
-        .visible(false)
-        .resizable(false)
-        .decorations(false)
-        .transparent(true)
-        .always_on_top(true)
-        .skip_taskbar(true)
-        .focused(false)
-        .build()
-        .map_err(|error| error.to_string())?;
-    }
-
-    if app.get_webview_window(BREAK_WINDOW_LABEL).is_none() {
-        WebviewWindowBuilder::new(
-            app,
-            BREAK_WINDOW_LABEL,
-            WebviewUrl::App("index.html?view=break".into()),
-        )
-        .title("GazeRest Break")
-        .inner_size(360.0, 450.0)
-        .visible(false)
-        .resizable(false)
-        .decorations(false)
-        .transparent(true)
-        .always_on_top(true)
-        .skip_taskbar(true)
-        .focused(false)
-        .build()
-        .map_err(|error| error.to_string())?;
-    }
-
-    Ok(())
-}
-
 pub fn toggle_main_window(app: &AppHandle) -> Result<(), String> {
     let Some(window) = app.get_webview_window(MAIN_WINDOW_LABEL) else {
         return Ok(());
@@ -107,72 +65,93 @@ pub fn hide_main_window(app: &AppHandle) -> Result<(), String> {
     window.hide().map_err(|error| error.to_string())
 }
 
-pub fn show_reminder(
-    app: &AppHandle,
-    level: i64,
-    low_distraction_mode: bool,
-) -> Result<(), String> {
-    let Some(window) = app.get_webview_window(REMINDER_WINDOW_LABEL) else {
+pub fn show_reminder(app: &AppHandle, level: i64) -> Result<(), String> {
+    close_window(app, REMINDER_WINDOW_LABEL);
+
+    if level <= 0 {
         return Ok(());
-    };
-
-    window
-        .set_fullscreen(false)
-        .map_err(|error| error.to_string())?;
-
-    match level {
-        1 => {
-            window
-                .set_size(Size::Logical(LogicalSize::new(420.0, 240.0)))
-                .map_err(|error| error.to_string())?;
-            let _ = window.move_window(Position::BottomRight);
-        }
-        2 => {
-            window
-                .set_size(Size::Logical(LogicalSize::new(660.0, 460.0)))
-                .map_err(|error| error.to_string())?;
-            let _ = window.move_window(Position::Center);
-        }
-        3 => {}
-        _ => {}
     }
 
-    window.show().map_err(|error| error.to_string())?;
-    if level == 3 {
+    let (width, height, position, fullscreen, always_on_top) = match level {
+        1 => (372.0, 196.0, Some(Position::BottomRight), false, true),
+        2 => (560.0, 380.0, Some(Position::Center), false, true),
+        3 => (900.0, 620.0, None, true, true),
+        _ => (380.0, 188.0, Some(Position::BottomRight), false, true),
+    };
+    let transparent = level == 3;
+
+    let window = WebviewWindowBuilder::new(
+        app,
+        REMINDER_WINDOW_LABEL,
+        WebviewUrl::App(format!("index.html?view=reminder&nonce={}", chrono::Utc::now().timestamp_millis()).into()),
+    )
+    .title("GazeRest Reminder")
+    .inner_size(width, height)
+    .visible(false)
+    .resizable(false)
+    .decorations(false)
+    .transparent(transparent)
+    .always_on_top(always_on_top)
+    .skip_taskbar(true)
+    .focused(level == 3)
+    .build()
+    .map_err(|error| error.to_string())?;
+
+    if fullscreen {
         window
             .set_fullscreen(true)
             .map_err(|error| error.to_string())?;
-    } else if !low_distraction_mode && level >= 2 {
         window.set_focus().map_err(|error| error.to_string())?;
+    } else if let Some(position) = position {
+        let _ = window.move_window(position);
     }
-    Ok(())
+
+    window.show().map_err(|error| error.to_string())
 }
 
 pub fn hide_reminder(app: &AppHandle) -> Result<(), String> {
-    let Some(window) = app.get_webview_window(REMINDER_WINDOW_LABEL) else {
-        return Ok(());
-    };
-    window.hide().map_err(|error| error.to_string())
+    close_window(app, REMINDER_WINDOW_LABEL);
+    Ok(())
 }
 
 pub fn show_break(app: &AppHandle) -> Result<(), String> {
-    let Some(window) = app.get_webview_window(BREAK_WINDOW_LABEL) else {
-        return Ok(());
-    };
+    close_window(app, BREAK_WINDOW_LABEL);
+
+    let window = WebviewWindowBuilder::new(
+        app,
+        BREAK_WINDOW_LABEL,
+        WebviewUrl::App(format!("index.html?view=break&nonce={}", chrono::Utc::now().timestamp_millis()).into()),
+    )
+    .title("GazeRest Break")
+    .inner_size(360.0, 450.0)
+    .visible(false)
+    .resizable(false)
+    .decorations(false)
+    .transparent(false)
+    .always_on_top(true)
+    .skip_taskbar(true)
+    .focused(true)
+    .build()
+    .map_err(|error| error.to_string())?;
+
     window
         .set_fullscreen(false)
         .map_err(|error| error.to_string())?;
     window
         .set_size(Size::Logical(LogicalSize::new(360.0, 450.0)))
         .map_err(|error| error.to_string())?;
-    window.show().map_err(|error| error.to_string())?;
     let _ = window.move_window(Position::Center);
-    Ok(())
+    window.show().map_err(|error| error.to_string())?;
+    window.set_focus().map_err(|error| error.to_string())
 }
 
 pub fn hide_break(app: &AppHandle) -> Result<(), String> {
-    let Some(window) = app.get_webview_window(BREAK_WINDOW_LABEL) else {
-        return Ok(());
-    };
-    window.hide().map_err(|error| error.to_string())
+    close_window(app, BREAK_WINDOW_LABEL);
+    Ok(())
+}
+
+fn close_window(app: &AppHandle, label: &str) {
+    if let Some(window) = app.get_webview_window(label) {
+        let _ = window.close();
+    }
 }

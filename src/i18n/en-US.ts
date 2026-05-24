@@ -35,9 +35,11 @@ export default {
   },
   status: {
     running: 'Running',
+    reminder_pending: 'Break ready',
     paused: 'Paused',
     snoozed: 'Snoozed',
     break_in_progress: 'On break',
+    break_completed: 'Break complete',
     outside_schedule: 'Outside schedule',
   },
   onboarding: {
@@ -60,7 +62,7 @@ export default {
     activeElapsed: 'Continuous screen time',
     distanceShortcut: 'How far should your eyes be from the screen?',
     todayUsage: 'Today usage',
-    longestStreak: 'Longest streak',
+    longestStreak: 'Today longest streak',
     recommendedDistance: 'Recommended distance',
     language: 'Language',
     dotsLabel: 'Panel pagination indicator',
@@ -189,6 +191,9 @@ export default {
     level3Title: 'Break time is here',
     level3Body: 'Step away from the screen for a moment and start a 20-second eye-care break.',
     level3Hint: 'The countdown will guide you to look farther away and relax your eyes',
+    inactiveEyebrow: 'No active reminder',
+    inactiveTitle: 'Reminder closed',
+    inactiveHint: 'This window can be closed. The main panel remains the source of truth.',
   },
   break: {
     eyebrow: 'Break in progress',
@@ -196,6 +201,10 @@ export default {
     minimalHint: 'Let your eyes rest away from the screen and blink softly.',
     breathingHint: 'Follow the breathing rhythm and let your focus drift farther away.',
     guidedHint: 'Look farther away, blink a few times, and give your eyes a short reset.',
+    inactiveTitle: 'No active break',
+    inactiveHint: 'The break timer is not running.',
+    completedTitle: 'Break complete',
+    completedHint: 'Nice. You can return to work when you are ready.',
   },
   closePrompt: {
     title: 'What should happen when the window closes?',

@@ -63,6 +63,7 @@ function App() {
   const [todaySummary, setTodaySummary] = useState<TodaySummary | null>(null)
   const [activeReminder, setActiveReminder] = useState<ReminderEvent | null>(null)
   const [activeBreak, setActiveBreak] = useState<BreakSession | null>(null)
+  const [lastFinishedBreak, setLastFinishedBreak] = useState<BreakSession | null>(null)
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
   const [closePromptOpen, setClosePromptOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -77,10 +78,6 @@ function App() {
 
   const reportError = useEffectEvent((value: unknown) => {
     setError(normalizeError(value, t))
-  })
-
-  const handleCloseIntent = useEffectEvent(() => {
-    void requestClose().catch((value: unknown) => reportError(value))
   })
 
   const applySnapshot = useEffectEvent(
@@ -108,6 +105,9 @@ function App() {
       setTodaySummary(payload.todaySummary)
       setActiveReminder(payload.activeReminder)
       setActiveBreak(payload.activeBreak)
+      if (payload.activeBreak) {
+        setLastFinishedBreak(null)
+      }
       await i18n.changeLanguage(payload.settings.language)
       setLanguageReady(true)
     },
@@ -144,17 +144,16 @@ function App() {
       )
       disposers.push(
         await subscribeEvent<BreakSession | null>('break-tick', (payload) => {
+          if (payload) {
+            setLastFinishedBreak(null)
+          }
           setActiveBreak(payload)
         }),
       )
       disposers.push(
         await subscribeEvent<BreakSession | null>('break-finished', (payload) => {
-          setActiveBreak(payload)
-        }),
-      )
-      disposers.push(
-        await subscribeEvent<null>('close-intent', () => {
-          handleCloseIntent()
+          setActiveBreak(null)
+          setLastFinishedBreak(payload)
         }),
       )
     }
@@ -167,14 +166,6 @@ function App() {
       }
     }
   }, [i18n])
-
-  useEffect(() => {
-    if (loading || windowView !== 'main') {
-      return
-    }
-
-    void syncMainWindowLayout(activeLayout).catch((value: unknown) => reportError(value))
-  }, [activeLayout, loading, reportError])
 
   async function persistSettings(nextSettings: Settings, mode: 'explicit' | 'immediate') {
     const closeBehaviorChanged =
@@ -275,6 +266,38 @@ function App() {
     setClosePromptOpen(true)
   }
 
+  const handleCloseIntent = useEffectEvent(() => {
+    void requestClose().catch((value: unknown) => reportError(value))
+  })
+
+  useEffect(() => {
+    const disposers: Array<() => void> = []
+
+    const bind = async () => {
+      disposers.push(
+        await subscribeEvent<null>('close-intent', () => {
+          handleCloseIntent()
+        }),
+      )
+    }
+
+    void bind()
+
+    return () => {
+      for (const dispose of disposers) {
+        dispose()
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    if (loading || windowView !== 'main') {
+      return
+    }
+
+    void syncMainWindowLayout(activeLayout).catch((value: unknown) => reportError(value))
+  }, [activeLayout, loading])
+
   if (
     loading ||
     !languageReady ||
@@ -311,6 +334,7 @@ function App() {
       <BreakWindow
         language={savedSettings.language}
         breakSession={activeBreak}
+        completedBreakSession={lastFinishedBreak}
         windowOpacity={savedSettings.windowOpacity}
         onCancel={() => void handleAction(cancelBreak)}
       />
@@ -334,12 +358,11 @@ function App() {
       onBack={() => startTransition(() => setScreen('panel'))}
       onOpenDistance={() => startTransition(() => setScreen('distance'))}
       onStartBreak={() => void handleStartBreak()}
-      onToggleLanguage={() => {
-        const nextLanguage = savedSettings.language === 'zh-CN' ? 'en-US' : 'zh-CN'
+      onLanguageChange={(language) => {
         void persistSettings(
           {
             ...savedSettings,
-            language: nextLanguage,
+            language,
           },
           'immediate',
         )

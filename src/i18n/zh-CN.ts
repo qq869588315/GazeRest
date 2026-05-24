@@ -35,9 +35,11 @@ export default {
   },
   status: {
     running: '运行中',
+    reminder_pending: '该休息了',
     paused: '已暂停',
     snoozed: '已延后',
     break_in_progress: '休息中',
+    break_completed: '休息完成',
     outside_schedule: '非工作时段',
   },
   onboarding: {
@@ -60,7 +62,7 @@ export default {
     activeElapsed: '已连续用屏时间',
     distanceShortcut: '眼睛需要离屏幕多远？',
     todayUsage: '今日用屏',
-    longestStreak: '最长用屏',
+    longestStreak: '今日最长连续用屏',
     recommendedDistance: '建议距离',
     language: '语言',
     dotsLabel: '面板分页指示',
@@ -101,7 +103,7 @@ export default {
       },
       guided: {
         title: '轻引导模式',
-        body: '附带一句轻提示，如“看向远处”',
+        body: '附带一句轻提示，例如“看向远处”',
       },
     },
     runtimeSection: '运行设置',
@@ -126,7 +128,7 @@ export default {
     privacyBody: '完全离线运行，所有数据仅保存在本地。',
     privacyItems: [
       '完全离线运行，仅保存本地设置与提醒/休息记录。',
-      '不上传数据，不记录屏幕内容，不记录按键内容。',
+      '不上载数据，不记录屏幕内容，不记录按键内容。',
       '不请求摄像头或麦克风权限。',
     ],
     scheduleLabel: '工作时间',
@@ -189,6 +191,9 @@ export default {
     level3Title: '休息时间到了',
     level3Body: '建议你现在暂时离开屏幕，开始一次 20 秒的护眼休息。',
     level3Hint: '进入倒计时后，会引导你看向远处并放松双眼',
+    inactiveEyebrow: '暂无提醒',
+    inactiveTitle: '提醒已关闭',
+    inactiveHint: '这个窗口可以关闭，主面板会继续同步状态。',
   },
   break: {
     eyebrow: '正在休息',
@@ -196,6 +201,10 @@ export default {
     minimalHint: '让眼睛短暂离开屏幕，轻轻眨眼。',
     breathingHint: '跟着呼吸节奏慢慢放松，让视线看向更远处。',
     guidedHint: '看向更远的地方，轻眨几次眼睛，给双眼一点恢复时间。',
+    inactiveTitle: '暂无休息',
+    inactiveHint: '当前没有运行中的休息倒计时。',
+    completedTitle: '休息完成',
+    completedHint: '很好，准备好后可以回到工作。',
   },
   closePrompt: {
     title: '关闭窗口时如何处理？',

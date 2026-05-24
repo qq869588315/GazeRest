@@ -59,6 +59,9 @@ let snapshot: BootstrapPayload = {
     id: 1,
     currentStatus: 'running',
     activeElapsedSeconds: 488,
+    todayActiveElapsedSeconds: 3200,
+    todayActiveDate: new Date().toISOString().slice(0, 10),
+    todayMaxActiveStreakSeconds: 1512,
     nextReminderDueAt: new Date(Date.now() + 19 * 60 * 1000 + 52 * 1000).toISOString(),
     pausedUntil: null,
     deferredReminderPending: false,
@@ -73,6 +76,7 @@ let snapshot: BootstrapPayload = {
     completedBreakCount: 4,
     skippedCount: 1,
     snoozedCount: 2,
+    todayActiveElapsedSeconds: 3200,
     maxActiveStreakSeconds: 1512,
     completionRate: 67,
   },
@@ -123,6 +127,7 @@ export async function startBreakMock(triggeredByReminderEventId: number | null) 
       currentStatus: 'break_in_progress',
       pendingReminderEventId: null,
       pendingReminderLevel: null,
+      nextReminderDueAt: null,
     },
   }
   emit('state-updated', snapshot)
@@ -153,6 +158,7 @@ export async function cancelBreakMock() {
       ...snapshot.runtimeState,
       currentStatus: 'running',
       activeElapsedSeconds: 0,
+      todayActiveElapsedSeconds: snapshot.runtimeState.todayActiveElapsedSeconds,
       nextReminderDueAt: new Date(
         Date.now() + settings.reminderIntervalMinutes * 60 * 1000,
       ).toISOString(),
@@ -232,6 +238,7 @@ export async function skipReminderMock() {
       ...snapshot.runtimeState,
       currentStatus: 'running',
       activeElapsedSeconds: 0,
+      todayActiveElapsedSeconds: snapshot.runtimeState.todayActiveElapsedSeconds,
       nextReminderDueAt: new Date(
         Date.now() + settings.reminderIntervalMinutes * 60 * 1000,
       ).toISOString(),
@@ -314,6 +321,7 @@ function tickBreakCountdownMock() {
       ...snapshot.runtimeState,
       currentStatus: 'running',
       activeElapsedSeconds: 0,
+      todayActiveElapsedSeconds: snapshot.runtimeState.todayActiveElapsedSeconds,
       nextReminderDueAt: new Date(
         Date.now() + settings.reminderIntervalMinutes * 60 * 1000,
       ).toISOString(),

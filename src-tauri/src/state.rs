@@ -19,14 +19,20 @@ pub struct AppContext {
 }
 
 impl AppContext {
-    pub fn new(db: Database, settings: Settings, runtime: RuntimeState) -> Self {
+    pub fn new(
+        db: Database,
+        settings: Settings,
+        runtime: RuntimeState,
+        active_reminder: Option<ReminderEvent>,
+        active_break: Option<BreakSession>,
+    ) -> Self {
         Self {
             db,
             volatile: Mutex::new(VolatileState {
                 settings,
                 runtime,
-                active_reminder: None,
-                active_break: None,
+                active_reminder,
+                active_break,
                 exit_requested: false,
                 break_generation: 0,
                 last_tick_unix: chrono::Utc::now().timestamp(),
@@ -35,10 +41,12 @@ impl AppContext {
     }
 
     pub fn snapshot(&self) -> Result<BootstrapPayload, String> {
-        let guard = self
+        let mut guard = self
             .volatile
             .lock()
-            .map_err(|_| "状态锁已损坏".to_string())?;
+            .map_err(|_| "state lock poisoned".to_string())?;
+        crate::runtime_service::reconcile_snapshot(&self.db, &mut guard)?;
+
         Ok(BootstrapPayload {
             settings: guard.settings.clone(),
             runtime_state: guard.runtime.clone(),

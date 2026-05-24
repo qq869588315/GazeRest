@@ -2,8 +2,11 @@ mod commands;
 mod db;
 mod models;
 mod platform;
+mod runtime_service;
 mod scheduler;
+mod sound_service;
 mod state;
+mod tray_service;
 mod windows;
 
 use tauri::{
@@ -31,10 +34,23 @@ pub fn run() {
         .setup(|app| {
             let database = db::Database::new(app.handle())?;
             let settings = database.load_or_init_settings()?;
-            let runtime = database.load_or_init_runtime()?;
-            app.manage(state::AppContext::new(database, settings, runtime));
-            windows::ensure_aux_windows(app.handle())?;
+            let mut runtime = database.load_or_init_runtime()?;
+            let mut active_break = None;
+            runtime_service::reconcile_startup(
+                &database,
+                &settings,
+                &mut runtime,
+                &mut active_break,
+            )?;
+            app.manage(state::AppContext::new(
+                database,
+                settings,
+                runtime,
+                None,
+                active_break,
+            ));
             build_tray(app.handle())?;
+            tray_service::sync_tray(app.handle());
             scheduler::spawn_monitor(app.handle());
             Ok(())
         })
@@ -81,15 +97,15 @@ pub fn run() {
 
 fn build_tray(app: &AppHandle) -> Result<(), String> {
     let tray_menu = MenuBuilder::new(app)
-        .text("show", "显示面板")
-        .text("start_break", "开始 20 秒休息")
+        .text("show", "Show panel")
+        .text("start_break", "Start 20s break")
         .separator()
-        .text("pause_30", "暂停 30 分钟")
-        .text("pause_60", "暂停 1 小时")
-        .text("pause_today", "今天不再提醒")
-        .text("resume", "立即恢复")
+        .text("pause_30", "Pause 30 minutes")
+        .text("pause_60", "Pause 1 hour")
+        .text("pause_today", "Pause today")
+        .text("resume", "Resume now")
         .separator()
-        .text("quit", "退出 GazeRest")
+        .text("quit", "Quit GazeRest")
         .build()
         .map_err(|error| error.to_string())?;
 

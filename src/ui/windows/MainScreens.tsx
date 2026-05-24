@@ -22,7 +22,7 @@ type PanelProps = {
   onOpenDistance: () => void
   onStartBreak: () => void
   onResume: () => void
-  onToggleLanguage: () => void
+  onLanguageChange: (language: Settings['language']) => void
 }
 
 type DistanceViewProps = {
@@ -68,9 +68,10 @@ export function PanelView({
   onOpenDistance,
   onStartBreak,
   onResume,
-  onToggleLanguage,
+  onLanguageChange,
 }: PanelProps) {
   const { i18n, t } = useTranslation()
+  const [languageMenuOpen, setLanguageMenuOpen] = useState(false)
   const intervalSeconds = settings.reminderIntervalMinutes * 60
   const awaitingResume =
     runtimeState.currentStatus === 'paused' && runtimeState.pausedUntil === null
@@ -84,7 +85,7 @@ export function PanelView({
     : runtimeState.nextReminderDueAt
       ? t('panel.nextReminderAt', { time: formatShortTime(runtimeState.nextReminderDueAt) })
       : t('status.outside_schedule')
-  const currentLanguage = i18n.language === 'en-US' ? 'EN' : '\u4e2d\u6587'
+  const currentLanguage = settings.language === 'en-US' ? 'EN' : '\u4e2d\u6587'
 
   return (
     <section className={styles.panelView}>
@@ -111,7 +112,10 @@ export function PanelView({
       </article>
 
       <article className={styles.summaryStrip}>
-        <SummaryStat label={t('panel.todayUsage')} value={formatMetricTime(runtimeState.activeElapsedSeconds)} />
+        <SummaryStat
+          label={t('panel.todayUsage')}
+          value={formatMetricTime(todaySummary.todayActiveElapsedSeconds)}
+        />
         <SummaryStat
           label={t('panel.longestStreak')}
           value={formatMetricTime(todaySummary.maxActiveStreakSeconds)}
@@ -140,11 +144,42 @@ export function PanelView({
         </button>
 
         <div className={styles.panelQuickActions}>
-          <button type="button" className={styles.languageButton} onClick={onToggleLanguage}>
-            <GlobeIcon />
-            <span>{currentLanguage}</span>
-            <ChevronDownIcon />
-          </button>
+          <div className={styles.languageMenu}>
+            <button
+              type="button"
+              className={styles.languageButton}
+              aria-expanded={languageMenuOpen}
+              onClick={() => setLanguageMenuOpen((open) => !open)}
+            >
+              <GlobeIcon />
+              <span>{currentLanguage}</span>
+              <ChevronDownIcon />
+            </button>
+            {languageMenuOpen ? (
+              <div className={styles.languageDropdown}>
+                {(['zh-CN', 'en-US'] as const).map((language) => (
+                  <button
+                    key={language}
+                    type="button"
+                    className={clsx(
+                      styles.languageOption,
+                      settings.language === language && styles.languageOptionActive,
+                    )}
+                    onClick={() => {
+                      setLanguageMenuOpen(false)
+                      if (settings.language !== language) {
+                        onLanguageChange(language)
+                      }
+                    }}
+                  >
+                    {language === 'zh-CN'
+                      ? t('settings.languageOptions.zh-CN')
+                      : t('settings.languageOptions.en-US')}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
         </div>
       </div>
 

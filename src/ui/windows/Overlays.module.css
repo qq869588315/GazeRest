@@ -31,8 +31,17 @@
   background: transparent;
 }
 
+.level1Viewport {
+  padding: 0;
+}
+
+.level1ScaleFrame {
+  width: 100%;
+  height: 100%;
+}
+
 .immersiveViewport {
-  background: transparent;
+  background: rgb(9 22 34 / var(--immersive-backdrop-opacity, 0.3));
 }
 
 .reminderCardLevel1,
@@ -57,18 +66,20 @@
 .reminderCardLevel1 {
   display: flex;
   align-items: stretch;
-  width: min(100%, 380px);
+  width: 100%;
+  height: 100%;
+  border-radius: 22px;
   overflow: hidden;
 }
 
 .reminderAccent {
-  width: 8px;
+  width: 7px;
   background: linear-gradient(180deg, rgba(82, 224, 246, 0.94), rgba(46, 185, 228, 0.92));
 }
 
 .reminderContent {
   flex: 1;
-  padding: 26px;
+  padding: 22px 24px;
 }
 
 .reminderContent h2,
@@ -126,12 +137,39 @@
 
 .floatingDot {
   position: absolute;
-  top: 24px;
-  right: 24px;
-  width: 16px;
-  height: 16px;
+  top: 20px;
+  right: 20px;
+  width: 13px;
+  height: 13px;
   border-radius: 999px;
   background: #26c7ea;
+}
+
+.reminderCardLevel1 h2 {
+  max-width: calc(100% - 24px);
+  font-size: 22px;
+}
+
+.reminderCardLevel1 p {
+  max-width: calc(100% - 8px);
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.reminderCardLevel1 .reminderActionsCompact {
+  gap: 10px;
+  margin-top: 16px;
+  flex-direction: row;
+}
+
+.reminderCardLevel1 .primaryButton,
+.reminderCardLevel1 .secondaryButton {
+  flex: 1 1 0;
+  min-height: 44px;
+  min-width: 0;
+  padding: 0 14px;
+  border-radius: 16px;
+  font-size: 15px;
 }
 
 .reminderCardLevel2,

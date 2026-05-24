@@ -28,6 +28,7 @@ type Level2ReminderProps = LevelReminderProps & {
 type BreakWindowProps = {
   language: Settings['language']
   breakSession: BreakSession | null
+  completedBreakSession?: BreakSession | null
   windowOpacity: number
   onCancel: () => void
 }
@@ -46,14 +47,31 @@ export function ReminderWindow({
   onSnooze,
   onSkip,
 }: ReminderWindowProps) {
-  const { i18n } = useTranslation()
-  const level = reminder?.reminderLevel ?? 1
+  const { t, i18n } = useTranslation()
+  const level = reminder?.reminderLevel
 
   useEffect(() => {
     if (i18n.language !== language) {
       void i18n.changeLanguage(language)
     }
   }, [i18n, language])
+
+  if (!reminder || level === 0) {
+    return (
+      <main
+        className={clsx(styles.viewport, styles.breakViewport)}
+        style={{ ['--window-shell-opacity' as string]: '0.98' }}
+      >
+        <div className={styles.scaleFrame}>
+          <section className={styles.breakShell}>
+            <p className={styles.breakEyebrow}>{t('reminder.inactiveEyebrow')}</p>
+            <h2>{t('reminder.inactiveTitle')}</h2>
+            <p className={styles.breakHint}>{t('reminder.inactiveHint')}</p>
+          </section>
+        </div>
+      </main>
+    )
+  }
 
   if (level === 3) {
     return (
@@ -70,7 +88,7 @@ export function ReminderWindow({
     return (
       <Level2Reminder
         reminder={reminder}
-        windowOpacity={windowOpacity}
+        windowOpacity={1}
         onStartBreak={onStartBreak}
         onSnooze={onSnooze}
         onSkip={onSkip}
@@ -81,7 +99,7 @@ export function ReminderWindow({
   return (
     <Level1Reminder
       reminder={reminder}
-      windowOpacity={windowOpacity}
+      windowOpacity={1}
       onStartBreak={onStartBreak}
       onSnooze={onSnooze}
     />
@@ -91,12 +109,12 @@ export function ReminderWindow({
 export function BreakWindow({
   language,
   breakSession,
-  windowOpacity: _windowOpacity,
+  completedBreakSession = null,
   onCancel,
 }: BreakWindowProps) {
   const { t, i18n } = useTranslation()
   const [displayRemainingSeconds, setDisplayRemainingSeconds] = useState(
-    breakSession?.remainingSeconds ?? breakSession?.durationSeconds ?? 20,
+    breakSession?.remainingSeconds ?? 0,
   )
   const style = breakSession?.style ?? 'minimal'
   const totalSeconds = Math.max(1, breakSession?.durationSeconds ?? 20)
@@ -117,20 +135,11 @@ export function BreakWindow({
 
   useEffect(() => {
     if (!breakSession) {
-      setDisplayRemainingSeconds((current) =>
-        current > 0 && current <= totalSeconds ? current : totalSeconds,
-      )
-      const timer = window.setInterval(() => {
-        setDisplayRemainingSeconds((current) => Math.max(0, current - 1))
-      }, 1000)
-
-      return () => {
-        window.clearInterval(timer)
-      }
+      return
     }
 
     if (breakSession.remainingSeconds <= 0) {
-      setDisplayRemainingSeconds(0)
+      window.setTimeout(() => setDisplayRemainingSeconds(0), 0)
       return
     }
 
@@ -153,10 +162,34 @@ export function BreakWindow({
     }
   }, [breakSession, totalSeconds])
 
+  if (!breakSession) {
+    return (
+      <main
+        className={clsx(styles.viewport, styles.breakViewport)}
+        style={{ ['--window-shell-opacity' as string]: '1' }}
+      >
+        <div className={styles.scaleFrame}>
+          <section className={styles.breakShell}>
+            <p className={styles.breakEyebrow}>{t('break.eyebrow')}</p>
+            <h2>{completedBreakSession ? t('break.completedTitle') : t('break.inactiveTitle')}</h2>
+            <p className={styles.breakHint}>
+              {completedBreakSession ? t('break.completedHint') : t('break.inactiveHint')}
+            </p>
+            {completedBreakSession ? (
+              <button type="button" className={styles.secondaryButton} onClick={onCancel}>
+                {t('common.cancelBreak')}
+              </button>
+            ) : null}
+          </section>
+        </div>
+      </main>
+    )
+  }
+
   return (
     <main
       className={clsx(styles.viewport, styles.breakViewport)}
-      style={{ ['--window-shell-opacity' as string]: '0.98' }}
+      style={{ ['--window-shell-opacity' as string]: '1' }}
     >
       <div className={styles.scaleFrame}>
         <section className={clsx(styles.breakShell, style === 'guided' && styles.breakShellGuided)}>
@@ -220,10 +253,10 @@ function Level1Reminder({
 
   return (
     <main
-      className={clsx(styles.viewport, styles.reminderViewport)}
+      className={clsx(styles.viewport, styles.reminderViewport, styles.level1Viewport)}
       style={{ ['--window-shell-opacity' as string]: `${Math.min(1, Math.max(0, windowOpacity))}` }}
     >
-      <div className={styles.scaleFrame}>
+      <div className={clsx(styles.scaleFrame, styles.level1ScaleFrame)}>
         <section className={styles.reminderCardLevel1}>
           <div className={styles.reminderAccent} />
           <div className={styles.reminderContent}>
@@ -297,7 +330,10 @@ function Level3Reminder({
   return (
     <main
       className={clsx(styles.viewport, styles.immersiveViewport)}
-      style={{ ['--window-shell-opacity' as string]: `${Math.min(1, Math.max(0, windowOpacity))}` }}
+      style={{
+        ['--window-shell-opacity' as string]: '1',
+        ['--immersive-backdrop-opacity' as string]: `${Math.min(0.82, Math.max(0.18, windowOpacity))}`,
+      }}
     >
       <div className={styles.scaleFrameFull}>
         <section className={styles.immersiveShell}>

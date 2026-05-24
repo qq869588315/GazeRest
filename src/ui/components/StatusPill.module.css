@@ -22,6 +22,11 @@
   color: #2f9989;
 }
 
+.reminder_pending {
+  background: rgba(255, 238, 235, 0.96);
+  color: #d75a45;
+}
+
 .paused {
   background: rgba(255, 246, 232, 0.96);
   color: #be7d2e;
@@ -35,6 +40,11 @@
 .break_in_progress {
   background: rgba(235, 248, 255, 0.96);
   color: #347596;
+}
+
+.break_completed {
+  background: rgba(238, 252, 251, 0.96);
+  color: #2f9989;
 }
 
 .outside_schedule {

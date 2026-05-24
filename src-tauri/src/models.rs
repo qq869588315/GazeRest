@@ -1,13 +1,18 @@
 use chrono::{DateTime, Datelike, Local, Timelike, Utc};
 use serde::{Deserialize, Serialize};
 
+pub const DEFAULT_REMINDER_INTERVAL_MINUTES: i64 = 20;
+pub const ALLOWED_REMINDER_INTERVAL_MINUTES: [i64; 5] = [20, 30, 40, 50, 60];
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum AppStatus {
     Running,
+    ReminderPending,
     Paused,
     Snoozed,
     BreakInProgress,
+    BreakCompleted,
     OutsideSchedule,
 }
 
@@ -74,6 +79,9 @@ pub struct RuntimeState {
     pub id: i64,
     pub current_status: AppStatus,
     pub active_elapsed_seconds: i64,
+    pub today_active_elapsed_seconds: i64,
+    pub today_active_date: String,
+    pub today_max_active_streak_seconds: i64,
     pub next_reminder_due_at: Option<String>,
     pub paused_until: Option<String>,
     pub deferred_reminder_pending: bool,
@@ -123,6 +131,7 @@ pub struct TodaySummary {
     pub completed_break_count: i64,
     pub skipped_count: i64,
     pub snoozed_count: i64,
+    pub today_active_elapsed_seconds: i64,
     pub max_active_streak_seconds: i64,
     pub completion_rate: i64,
 }
@@ -153,7 +162,7 @@ impl Settings {
         Self {
             id: 1,
             language: "zh-CN".into(),
-            reminder_interval_minutes: 20,
+            reminder_interval_minutes: DEFAULT_REMINDER_INTERVAL_MINUTES,
             break_duration_seconds: 20,
             auto_close_break_window: true,
             reminder_level: 1,
@@ -182,6 +191,26 @@ impl Settings {
     }
 }
 
+pub fn normalize_reminder_interval_minutes(value: i64) -> i64 {
+    if ALLOWED_REMINDER_INTERVAL_MINUTES.contains(&value) {
+        value
+    } else {
+        DEFAULT_REMINDER_INTERVAL_MINUTES
+    }
+}
+
+pub fn normalize_settings(settings: &mut Settings) -> bool {
+    let mut changed = false;
+    let reminder_interval_minutes =
+        normalize_reminder_interval_minutes(settings.reminder_interval_minutes);
+    if settings.reminder_interval_minutes != reminder_interval_minutes {
+        settings.reminder_interval_minutes = reminder_interval_minutes;
+        changed = true;
+    }
+
+    changed
+}
+
 pub fn default_close_button_behavior() -> &'static str {
     "hide_main_window"
 }
@@ -195,10 +224,14 @@ pub fn normalize_close_button_behavior(value: &str) -> &'static str {
 
 impl RuntimeState {
     pub fn default() -> Self {
+        let today = local_date_key();
         Self {
             id: 1,
             current_status: AppStatus::Running,
             active_elapsed_seconds: 0,
+            today_active_elapsed_seconds: 0,
+            today_active_date: today,
+            today_max_active_streak_seconds: 0,
             next_reminder_due_at: None,
             paused_until: None,
             deferred_reminder_pending: false,
@@ -214,6 +247,10 @@ impl RuntimeState {
 
 pub fn utc_now() -> String {
     Utc::now().to_rfc3339()
+}
+
+pub fn local_date_key() -> String {
+    Local::now().date_naive().to_string()
 }
 
 pub fn end_of_today_utc() -> DateTime<Utc> {
@@ -236,4 +273,30 @@ pub fn recommended_viewing_distance(width_cm: f64, height_cm: f64) -> Option<f64
 pub fn is_active_day(days: &[u32]) -> bool {
     let day = Local::now().weekday().number_from_monday();
     days.contains(&day)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn invalid_reminder_interval_falls_back_to_default() {
+        let mut settings = Settings::default();
+        settings.reminder_interval_minutes = 1;
+
+        assert!(normalize_settings(&mut settings));
+        assert_eq!(
+            settings.reminder_interval_minutes,
+            DEFAULT_REMINDER_INTERVAL_MINUTES
+        );
+    }
+
+    #[test]
+    fn allowed_reminder_interval_is_kept() {
+        let mut settings = Settings::default();
+        settings.reminder_interval_minutes = 30;
+
+        assert!(!normalize_settings(&mut settings));
+        assert_eq!(settings.reminder_interval_minutes, 30);
+    }
 }
