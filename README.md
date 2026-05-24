@@ -79,8 +79,8 @@ Windows 构建产物：
 
 ```text
 src-tauri/target/release/app.exe
-src-tauri/target/release/bundle/nsis/GazeRest_1.0.0_x64-setup.exe
-src-tauri/target/release/bundle/msi/GazeRest_1.0.0_x64_en-US.msi
+src-tauri/target/release/bundle/nsis/GazeRest_1.0.1_x64-setup.exe
+src-tauri/target/release/bundle/msi/GazeRest_1.0.1_x64_en-US.msi
 ```
 
 如果只想快速验证 release exe，不生成安装包：
@@ -91,23 +91,19 @@ npx tauri build --no-bundle
 
 仓库中的 `release/v1.0.0/` 是历史发布副本；正式发布请以本次 `npm run tauri:build` 生成的安装包为准。
 
-## 1.0.0 发布信息
+## 1.0.1 发布信息
 
-- 版本号：`1.0.0`
-- 发布日期：2026-05-24
+- 版本号：`1.0.1`
+- 发布日期：2026-05-25
 - 当前发布平台：Windows x64
-- 推荐分发包：`GazeRest_1.0.0_x64-setup.exe`
-- 可选 MSI 包：`GazeRest_1.0.0_x64_en-US.msi`
+- 推荐分发包：`GazeRest_1.0.1_x64-setup.exe`
+- 可选 MSI 包：`GazeRest_1.0.1_x64_en-US.msi`
 
-## 1.0.0 更新内容
+## 1.0.1 更新内容
 
-- 重写提醒和休息核心状态机，修复透明空窗、倒计时不动、旧 0 秒休息会话复用等稳定性问题。
-- 优化 Level 0 到 Level 3 的提醒行为，低等级不抢焦点，高等级保留强提醒能力。
-- 修复连续休息倒计时生命周期，每次开始休息都从完整时长开始。
-- 增加今日用屏和今日最长连续用屏统计，休息后只重置本轮连续用屏。
-- 增加自适应托盘图标状态，区分运行、暂停、延后、提醒、休息中和非工作时段。
-- 修复提醒音效播放和子进程闪现问题。
-- 优化主面板语言切换和 README 发布说明。
+- 修复旧本地数据中可能残留 1 分钟测试提醒间隔的问题，启动时会自动恢复为正式的 20 分钟。
+- 增加提醒间隔合法性保护，只允许正式选项 20 / 30 / 40 / 50 / 60 分钟生效。
+- 保留 1.0.0 的稳定性修复：提醒窗、休息倒计时、托盘状态、音效和今日用屏统计。
 
 ## 发布检查清单
 
