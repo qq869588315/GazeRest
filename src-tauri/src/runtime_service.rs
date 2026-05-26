@@ -38,41 +38,13 @@ pub fn reconcile_startup(
     runtime: &mut RuntimeState,
     active_break: &mut Option<BreakSession>,
 ) -> Result<(), String> {
-    rollover_today(runtime);
-
-    if let Some(mut running) = db.get_latest_running_break_session()? {
-        refresh_break_remaining(&mut running);
-        if running.remaining_seconds > 0 {
-            db.finish_other_running_break_sessions(
-                running.id,
-                "interrupted",
-                Some("startup_deduplicated"),
-            )?;
-            *active_break = Some(running);
-            runtime.current_status = AppStatus::BreakInProgress;
-            runtime.next_reminder_due_at = None;
-            runtime.updated_at = utc_now();
-            db.save_runtime(runtime)?;
-            return Ok(());
-        } else {
-            db.finish_break_session(running.id, "completed", None)?;
-        }
+    db.finish_all_running_break_sessions("interrupted", Some("app_restarted"))?;
+    if let Some(reminder_id) = runtime.pending_reminder_event_id {
+        db.update_reminder_action(reminder_id, ReminderAction::Ignored, None)?;
     }
 
     *active_break = None;
-    commands::clear_pending_reminder(runtime);
-    runtime.paused_until = None;
-    runtime.current_status = if crate::platform::within_schedule(settings) {
-        AppStatus::Running
-    } else {
-        AppStatus::OutsideSchedule
-    };
-    runtime.next_reminder_due_at = if matches!(runtime.current_status, AppStatus::Running) {
-        commands::next_due_at(settings, runtime)
-    } else {
-        None
-    };
-    runtime.updated_at = utc_now();
+    reset_runtime_for_process_start(settings, runtime);
     db.save_runtime(runtime)
 }
 
@@ -437,6 +409,27 @@ pub fn reset_runtime_for_next_round(settings: &Settings, runtime: &mut RuntimeSt
     commands::clear_pending_reminder(runtime);
 }
 
+pub fn reset_runtime_for_process_start(settings: &Settings, runtime: &mut RuntimeState) {
+    rollover_today(runtime);
+    runtime.active_elapsed_seconds = 0;
+    runtime.paused_until = None;
+    runtime.last_fullscreen_detected_at = None;
+    runtime.last_idle_detected_at = None;
+    runtime.last_activity_at = None;
+    runtime.current_status = if crate::platform::within_schedule(settings) {
+        AppStatus::Running
+    } else {
+        AppStatus::OutsideSchedule
+    };
+    runtime.next_reminder_due_at = if matches!(runtime.current_status, AppStatus::Running) {
+        commands::next_due_at(settings, runtime)
+    } else {
+        None
+    };
+    runtime.updated_at = utc_now();
+    commands::clear_pending_reminder(runtime);
+}
+
 pub fn refresh_break_remaining(session: &mut BreakSession) {
     let Some(started_at) = parse_utc(&session.started_at) else {
         session.remaining_seconds = session.remaining_seconds.max(0);
@@ -518,6 +511,56 @@ mod tests {
 
         assert_eq!(runtime.active_elapsed_seconds, 0);
         assert_eq!(runtime.today_active_elapsed_seconds, 600);
+    }
+
+    #[test]
+    fn process_start_resets_session_state_but_keeps_today_usage() {
+        let settings = Settings::default();
+        let mut runtime = RuntimeState::default();
+        runtime.current_status = AppStatus::Snoozed;
+        runtime.active_elapsed_seconds = 900;
+        runtime.today_active_elapsed_seconds = 2_400;
+        runtime.today_max_active_streak_seconds = 1_200;
+        runtime.next_reminder_due_at = Some((Utc::now() + Duration::minutes(5)).to_rfc3339());
+        runtime.paused_until = Some((Utc::now() + Duration::minutes(30)).to_rfc3339());
+        runtime.deferred_reminder_pending = true;
+        runtime.pending_reminder_event_id = Some(42);
+        runtime.pending_reminder_level = Some(2);
+        runtime.last_fullscreen_detected_at = Some(utc_now());
+        runtime.last_idle_detected_at = Some(utc_now());
+        runtime.last_activity_at = Some(utc_now());
+
+        reset_runtime_for_process_start(&settings, &mut runtime);
+
+        assert_eq!(runtime.current_status, AppStatus::Running);
+        assert_eq!(runtime.active_elapsed_seconds, 0);
+        assert_eq!(runtime.today_active_elapsed_seconds, 2_400);
+        assert_eq!(runtime.today_max_active_streak_seconds, 1_200);
+        assert!(runtime.next_reminder_due_at.is_some());
+        assert!(runtime.paused_until.is_none());
+        assert!(!runtime.deferred_reminder_pending);
+        assert!(runtime.pending_reminder_event_id.is_none());
+        assert!(runtime.pending_reminder_level.is_none());
+        assert!(runtime.last_fullscreen_detected_at.is_none());
+        assert!(runtime.last_idle_detected_at.is_none());
+        assert!(runtime.last_activity_at.is_none());
+    }
+
+    #[test]
+    fn process_start_rolls_over_today_usage_on_new_local_date() {
+        let settings = Settings::default();
+        let mut runtime = RuntimeState::default();
+        runtime.today_active_date = "2000-01-01".into();
+        runtime.active_elapsed_seconds = 900;
+        runtime.today_active_elapsed_seconds = 2_400;
+        runtime.today_max_active_streak_seconds = 1_200;
+
+        reset_runtime_for_process_start(&settings, &mut runtime);
+
+        assert_eq!(runtime.active_elapsed_seconds, 0);
+        assert_eq!(runtime.today_active_elapsed_seconds, 0);
+        assert_eq!(runtime.today_max_active_streak_seconds, 0);
+        assert_eq!(runtime.today_active_date, local_date_key());
     }
 
     #[test]

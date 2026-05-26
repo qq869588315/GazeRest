@@ -375,23 +375,6 @@ impl Database {
         })
     }
 
-    pub fn get_latest_running_break_session(&self) -> Result<Option<BreakSession>, String> {
-        let connection = self.connect()?;
-        connection
-            .query_row(
-                "SELECT id, started_at, ended_at, duration_seconds, status, cancel_reason,
-                        triggered_by_reminder_event_id, timer_style, created_at
-                 FROM break_sessions
-                 WHERE status = 'running'
-                 ORDER BY started_at DESC, id DESC
-                 LIMIT 1",
-                [],
-                map_break_session,
-            )
-            .optional()
-            .map_err(|error| error.to_string())
-    }
-
     pub fn finish_all_running_break_sessions(
         &self,
         status: &str,
@@ -409,23 +392,6 @@ impl Database {
         Ok(())
     }
 
-    pub fn finish_other_running_break_sessions(
-        &self,
-        keep_session_id: i64,
-        status: &str,
-        cancel_reason: Option<&str>,
-    ) -> Result<(), String> {
-        let connection = self.connect()?;
-        connection
-            .execute(
-                "UPDATE break_sessions
-         SET ended_at = ?1, status = ?2, cancel_reason = ?3
-         WHERE status = 'running' AND id <> ?4",
-                params![utc_now(), status, cancel_reason, keep_session_id],
-            )
-            .map_err(|error| error.to_string())?;
-        Ok(())
-    }
 }
 
 fn count_by_action(
@@ -529,22 +495,6 @@ fn map_runtime(row: &rusqlite::Row<'_>) -> rusqlite::Result<RuntimeState> {
         last_idle_detected_at: row.get(12)?,
         last_activity_at: row.get(13)?,
         updated_at: row.get(14)?,
-    })
-}
-
-fn map_break_session(row: &rusqlite::Row<'_>) -> rusqlite::Result<BreakSession> {
-    let duration_seconds = row.get(3)?;
-    Ok(BreakSession {
-        id: row.get(0)?,
-        started_at: row.get(1)?,
-        ended_at: row.get(2)?,
-        duration_seconds,
-        status: row.get(4)?,
-        cancel_reason: row.get(5)?,
-        triggered_by_reminder_event_id: row.get(6)?,
-        style: timer_style_from_str(&row.get::<_, String>(7)?),
-        created_at: row.get(8)?,
-        remaining_seconds: duration_seconds,
     })
 }
 

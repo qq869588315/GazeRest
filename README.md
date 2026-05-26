@@ -79,8 +79,8 @@ Windows 构建产物：
 
 ```text
 src-tauri/target/release/app.exe
-src-tauri/target/release/bundle/nsis/GazeRest_1.0.1_x64-setup.exe
-src-tauri/target/release/bundle/msi/GazeRest_1.0.1_x64_en-US.msi
+src-tauri/target/release/bundle/nsis/GazeRest_1.0.2_x64-setup.exe
+src-tauri/target/release/bundle/msi/GazeRest_1.0.2_x64_en-US.msi
 ```
 
 如果只想快速验证 release exe，不生成安装包：
@@ -91,13 +91,20 @@ npx tauri build --no-bundle
 
 仓库中的 `release/v1.0.0/` 是历史发布副本；正式发布请以本次 `npm run tauri:build` 生成的安装包为准。
 
-## 1.0.1 发布信息
+## 1.0.2 发布信息
 
-- 版本号：`1.0.1`
-- 发布日期：2026-05-25
+- 版本号：`1.0.2`
+- 发布日期：2026-05-26
 - 当前发布平台：Windows x64
-- 推荐分发包：`GazeRest_1.0.1_x64-setup.exe`
-- 可选 MSI 包：`GazeRest_1.0.1_x64_en-US.msi`
+- 推荐分发包：`GazeRest_1.0.2_x64-setup.exe`
+- 可选 MSI 包：`GazeRest_1.0.2_x64_en-US.msi`
+
+## 1.0.2 更新内容
+
+- 修复重新开机或重新打开 App 后继续沿用上次临时状态的问题。
+- 重新启动 App 时会清理待处理提醒、休息中、稍后、暂停和本轮连续用屏时间，开启新的提醒周期。
+- 保留“今日用屏”和“今日最长连续用屏”的当天累计；跨本地日期后仍会自动归零。
+- 退出或重启时会把未完成的休息会话标记为 interrupted，避免下次启动继续旧倒计时。
 
 ## 1.0.1 更新内容
 
